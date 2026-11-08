@@ -61,9 +61,13 @@ export function CallPage() {
   const [draft, setDraft] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [muted, setMuted] = useState(false)
+  const [frameNote, setFrameNote] = useState('')
   const call = view?.calls.find((item) => item.id === id)
   const mine = call && view?.profile.id === call.ownerId
-  const micAllowed = view?.consents.some((item) => item.type === 'microphone' && item.caseId === call?.caseId && item.granted)
+  const allows = (type: string) => view?.consents.some((item) => item.type === type && item.granted && (item.caseId === call?.caseId || item.caseId === '*'))
+  const micAllowed = allows('microphone')
+  const canLook = allows('camera') && allows('vision')
 
   function stopVoice() {
     earRef.current?.stop()
@@ -211,6 +215,56 @@ export function CallPage() {
         <button type="button" onClick={() => { window.speechSynthesis?.cancel(); earRef.current?.stop(); setListening(false) }}>
           Interrupt
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            const room = roomRef.current
+            if (!room) {
+              setTextMode(true)
+              return
+            }
+            const next = !muted
+            void room.localParticipant.setMicrophoneEnabled(!next).then(() => setMuted(next))
+          }}
+        >
+          {muted ? 'Unmute' : 'Mute'}
+        </button>
+        <button type="button" onClick={() => setTextMode(true)}>
+          Switch to text
+        </button>
+        <button
+          type="button"
+          disabled={!canLook || busy}
+          onClick={() => {
+            void (async () => {
+              if (!canLook || !call) return
+              setBusy(true)
+              setError('')
+              let stream: MediaStream | null = null
+              try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true })
+                const video = document.createElement('video')
+                video.srcObject = stream
+                await video.play()
+                const canvas = document.createElement('canvas')
+                canvas.width = 320
+                canvas.height = 180
+                canvas.getContext('2d')?.drawImage(video, 0, 0, 320, 180)
+                const image = canvas.toDataURL('image/jpeg', 0.7)
+                const result = await api<{ observation?: string }>('/api/media/frame', { callId: call.id, image })
+                const observation = result.observation || 'Camera analysis is not configured. Describe the scene in text.'
+                setFrameNote(observation.toLowerCase().startsWith('possibly') ? observation : `Possibly: ${observation}`)
+              } catch {
+                setError('The still frame was not shared. You can describe the scene in text.')
+              } finally {
+                stream?.getTracks().forEach((track) => track.stop())
+                setBusy(false)
+              }
+            })()
+          }}
+        >
+          Share one still frame
+        </button>
         <Link className="button" to={`/cases/${call.caseId}`}>
           Back to the case
         </Link>
@@ -244,6 +298,8 @@ export function CallPage() {
           </button>
         </form>
       )}
+      {canLook && <p>The assistant is looking at a still frame only when you tap the button. No person is watching. Nothing is marked AI verified.</p>}
+      {frameNote && <p className="notice" role="status">{frameNote}</p>}
       <section className="panel" aria-live="polite">
         <h2>Captions</h2>
         {call.transcript.length === 0 && <p className="muted">Nothing has been said yet.</p>}
