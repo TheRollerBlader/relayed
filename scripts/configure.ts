@@ -1,0 +1,13 @@
+import {mkdirSync,writeFileSync,readFileSync,existsSync} from 'node:fs';
+import {randomBytes} from 'node:crypto';
+import {parseEnv} from 'node:util';
+const path='.env';
+if(!existsSync(path))writeFileSync(path,readFileSync('.env.example'),{mode:0o600});
+const env=parseEnv(readFileSync(path,'utf8'));
+for(const key of ['LIVEKIT_API_SECRET','REFERRAL_SECRET','MEDIA_AGENT_SECRET','OUTBOX_MASTER_KEY','KEYCLOAK_ADMIN_PASSWORD'])if(!env[key])env[key]=randomBytes(32).toString('hex');
+writeFileSync(path,Object.entries(env).map(([k,v])=>`${k}=${v}`).join('\n')+'\n',{mode:0o600});
+mkdirSync('runtime/generated',{recursive:true});
+const realm={realm:'relayaid',enabled:true,displayName:'RelayAid local demo',registrationAllowed:true,registrationEmailAsUsername:true,verifyEmail:true,resetPasswordAllowed:true,rememberMe:false,loginWithEmailAllowed:true,duplicateEmailsAllowed:false,sslRequired:'none',loginTheme:'relayaid',smtpServer:{host:'mailpit',port:'1025',from:'relayaid@demo.invalid',fromDisplayName:'RelayAid local demo',auth:'false',ssl:'false',starttls:'false'},attributes:{'actionTokenGeneratedByUserLifespan':'3600','actionTokenGeneratedByUserLifespan.verify-email':'3600'},clients:[{clientId:'relayaid',name:'RelayAid',enabled:true,publicClient:true,standardFlowEnabled:true,directAccessGrantsEnabled:false,redirectUris:['http://localhost:5173/*'],webOrigins:['http://localhost:5173'],attributes:{'pkce.code.challenge.method':'S256'},protocolMappers:[{name:'relayaid-audience',protocol:'openid-connect',protocolMapper:'oidc-audience-mapper',config:{'included.client.audience':'relayaid','id.token.claim':'true','access.token.claim':'true'}}]}]};
+writeFileSync('runtime/generated/realm.json',JSON.stringify(realm,null,2),{mode:0o600});
+writeFileSync('runtime/generated/livekit.yaml',`port: 7880\nbind_addresses: ["0.0.0.0"]\nrtc:\n  tcp_port: 7881\n  udp_port: 7882\n  use_external_ip: false\n  node_ip: 127.0.0.1\nkeys:\n  ${env.LIVEKIT_API_KEY||'relayaid-local'}: ${env.LIVEKIT_API_SECRET}\nlogging:\n  level: warn\n`,{mode:0o600});
+console.log('Generated local configuration. Existing database volumes are preserved.');

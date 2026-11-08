@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>RelayAid figures</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: #09090c; color: #f5f3f5; }
+      body { font-family: "IBM Plex Sans", sans-serif; }
+      .frame {
+        width: 1440px;
+        height: 900px;
+        position: relative;
+        overflow: hidden;
+        background:
+          radial-gradient(ellipse at 82% 18%, rgba(237, 102, 183, 0.08), transparent 46%),
+          #09090c;
+      }
+      header { padding: 36px 52px 0; }
+      .kicker {
+        margin: 0;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        color: #ed66b7;
+      }
+      h2 {
+        margin: 10px 0 0;
+        font-size: 40px;
+        font-weight: 500;
+        letter-spacing: -0.045em;
+        line-height: 1.05;
+      }
+      .sub { margin: 10px 0 0; max-width: 860px; color: #aaa5af; font-size: 16px; line-height: 1.45; }
+      canvas { position: absolute; left: 0; right: 0; bottom: 0; width: 1440px; height: 720px; }
+      .note {
+        position: absolute;
+        left: 52px;
+        bottom: 28px;
+        margin: 0;
+        color: #96909c;
+        font-size: 13px;
+        max-width: 980px;
+      }
+      svg text { font-family: "IBM Plex Sans", sans-serif; }
+      .mono { font-family: "IBM Plex Mono", monospace; }
+    </style>
+  </head>
+  <body>
+    <section class="frame" id="architecture">
+      <header>
+        <p class="kicker">THREE DESKS, ONE RECORD</p>
+        <h2>The receipt moves when the server confirms it.</h2>
+        <p class="sub">Resident, coordinator, and volunteer desks read the same SpacetimeDB module. Investigate stays on the dev server.</p>
+      </header>
+      <canvas id="architecture-canvas"></canvas>
+    </section>
+
+    <section class="frame" id="states">
+      <header>
+        <p class="kicker">REQUEST PATH</p>
+        <h2>Saved here, then confirmed one step at a time.</h2>
+        <p class="sub">A local save is not delivery. Later steps appear only after the shelter system records them.</p>
+      </header>
+      <canvas id="states-canvas"></canvas>
+      <p class="note">Unacknowledged requests stay unmatched and do not take capacity. Cancelled and rejected stay on the receipt.</p>
+    </section>
+
+    <section class="frame" id="allocation">
+      <header>
+        <p class="kicker">SAME TWO REQUESTS</p>
+        <h2>First-come spends the accessible charger. Suitability keeps it.</h2>
+        <p class="sub">Request 1 can use either slot. Request 2 needs the accessible slot. One of each slot is free.</p>
+      </header>
+      <canvas id="allocation-canvas"></canvas>
+    </section>
+
+    <section class="frame" id="results">
+      <header>
+        <p class="kicker">SOLVER EXAMPLES</p>
+        <h2>Counts from the deterministic matcher.</h2>
+        <p class="sub">These are the worked examples in the test suite, not measurements from a live shelter.</p>
+      </header>
+      <svg viewBox="0 0 1440 680" width="1440" height="680" role="img" aria-label="Solver example charts">
+        <g transform="translate(52,28)">
+          <text x="0" y="22" fill="#f5f3f5" font-size="18" font-weight="500">Accessible charging</text>
+          <text x="0" y="46" fill="#aaa5af" font-size="13">Matched requests, out of 2</text>
+          <g transform="translate(0,78)">
+            <text x="0" y="18" fill="#aaa5af" font-size="13">First-come</text>
+            <rect x="110" y="4" width="130" height="22" fill="#ed66b7" />
+            <text x="250" y="20" fill="#f5f3f5" font-size="14">1 matched</text>
+            <text x="110" y="48" fill="#96909c" font-size="12">Request 2 unmatched: capacity exhausted</text>
+            <text x="0" y="92" fill="#aaa5af" font-size="13">Suitability</text>
+            <rect x="110" y="78" width="260" height="22" fill="#ed66b7" />
+            <text x="380" y="94" fill="#f5f3f5" font-size="14">2 matched</text>
+            <text x="110" y="122" fill="#96909c" font-size="12">Exact search. Accessible slot goes to request 2.</text>
+          </g>
+        </g>
+
+        <g transform="translate(760,28)">
+          <text x="0" y="22" fill="#f5f3f5" font-size="18" font-weight="500">Water stock of 2</text>
+          <text x="0" y="46" fill="#aaa5af" font-size="13">First-come, three requests for 1</text>
+          <g transform="translate(0,78)">
+            <text x="0" y="18" fill="#aaa5af" font-size="13">Served</text>
+            <rect x="110" y="4" width="220" height="22" fill="#ed66b7" />
+            <text x="340" y="20" fill="#f5f3f5" font-size="14">2</text>
+            <text x="0" y="64" fill="#aaa5af" font-size="13">Left out</text>
+            <rect x="110" y="50" width="110" height="22" fill="#29242e" stroke="#ed66b7" />
+            <text x="230" y="66" fill="#f5f3f5" font-size="14">1</text>
+            <text x="110" y="96" fill="#96909c" font-size="12">Request 3 unmatched: capacity exhausted</text>
+          </g>
+        </g>
+
+        <g transform="translate(52,310)">
+          <text x="0" y="22" fill="#f5f3f5" font-size="18" font-weight="500">What-if charger</text>
+          <text x="0" y="46" fill="#aaa5af" font-size="13">Both requests need an accessible slot</text>
+          <g transform="translate(0,78)">
+            <text x="0" y="18" fill="#aaa5af" font-size="13">Before</text>
+            <rect x="110" y="4" width="130" height="22" fill="#ed66b7" />
+            <text x="250" y="20" fill="#f5f3f5" font-size="14">1 matched</text>
+            <text x="0" y="64" fill="#aaa5af" font-size="13">After +1</text>
+            <rect x="110" y="50" width="260" height="22" fill="#ed66b7" />
+            <text x="380" y="66" fill="#f5f3f5" font-size="14">2 matched</text>
+            <text x="110" y="96" fill="#96909c" font-size="12">The original resource list stays 3 items long.</text>
+          </g>
+        </g>
+
+        <g transform="translate(760,310)">
+          <text x="0" y="22" fill="#f5f3f5" font-size="18" font-weight="500">Longest wait, stock of 5</text>
+          <text x="0" y="46" fill="#aaa5af" font-size="13">A household of 5 has been waiting. Three new requests want 1.</text>
+          <g transform="translate(0,78)">
+            <text x="0" y="18" fill="#aaa5af" font-size="13">Waiting</text>
+            <rect x="110" y="4" width="250" height="22" fill="#ed66b7" />
+            <text x="370" y="20" fill="#f5f3f5" font-size="14">5 units</text>
+            <text x="0" y="64" fill="#aaa5af" font-size="13">New</text>
+            <text x="110" y="66" fill="#f5f3f5" font-size="14">0 units</text>
+            <text x="110" y="96" fill="#96909c" font-size="12">Three new requests unmatched: capacity exhausted.</text>
+          </g>
+        </g>
+      </svg>
+    </section>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.170.0/build/three.module.js"
+        }
+      }
+    </script>
+    <script type="module">
+      import * as THREE from 'three'
+
+      function rendererFor(canvas) {
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+        renderer.setPixelRatio(2)
+        renderer.setSize(1440, 720, false)
+        renderer.setClearColor(0x000000, 0)
+        renderer.shadowMap.enabled = true
+        renderer.outputColorSpace = THREE.SRGBColorSpace
+        return renderer
+      }
+
+      function lights(scene) {
+        scene.add(new THREE.AmbientLight(0xffffff, 0.62))
+        const key = new THREE.DirectionalLight(0xfff7fb, 1.55)
+        key.position.set(7, 12, 8)
+        key.castShadow = true
+        key.shadow.mapSize.set(2048, 2048)
+        scene.add(key)
+        const fill = new THREE.DirectionalLight(0xed66b7, 0.28)
+        fill.position.set(-8, 5, -4)
+        scene.add(fill)
+      }
+
+      function ground(scene) {
+        const mesh = new THREE.Mesh(
+          new THREE.CircleGeometry(9.5, 64),
+          new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 1 }),
+        )
+        mesh.rotation.x = -Math.PI / 2
+        mesh.receiveShadow = true
+        scene.add(mesh)
+        const grid = new THREE.GridHelper(14, 14, 0x29242e, 0x1c1820)
+        grid.position.y = 0.01
+        scene.add(grid)
+      }
+
+      function slab(w, h, d, color = 0x16141a) {
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(w, h, d),
+          new THREE.MeshStandardMaterial({ color, roughness: 0.78, metalness: 0.04 }),
+        )
+        mesh.add(
+          new THREE.LineSegments(
+            new THREE.EdgesGeometry(mesh.geometry),
+            new THREE.LineBasicMaterial({ color: 0x3a3342 }),
+          ),
+        )
+        mesh.castShadow = true
+        mesh.receiveShadow = true
+        return mesh
+      }
+
+      function caption(text, accent = false) {
+        const canvas = document.createElement('canvas')
+        canvas.width = 768
+        canvas.height = 160
+        const g = canvas.getContext('2d')
+        g.clearRect(0, 0, canvas.width, canvas.height)
+        g.fillStyle = accent ? '#ed66b7' : '#f5f3f5'
+        g.font = '500 52px sans-serif'
+        g.textAlign = 'center'
+        g.textBaseline = 'middle'
+        g.fillText(text, 384, 80)
+        const tex = new THREE.CanvasTexture(canvas)
+        tex.colorSpace = THREE.SRGBColorSpace
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }))
+        sprite.scale.set(2.7, 0.56, 1)
+        sprite.renderOrder = 2
+        return sprite
+      }
+
+      function pin(scene, mesh, x, y, z, text, accent = false) {
+        mesh.position.set(x, y, z)
+        scene.add(mesh)
+        const label = caption(text, accent)
+        label.position.set(x, y + mesh.geometry.parameters.height / 2 + 0.48, z)
+        scene.add(label)
+        return mesh
+      }
+
+      function tube(scene, a, b, color = 0xed66b7) {
+        const start = new THREE.Vector3(...a)
+        const end = new THREE.Vector3(...b)
+        const dir = end.clone().sub(start)
+        const mesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.03, 0.03, dir.length(), 10),
+          new THREE.MeshStandardMaterial({ color, roughness: 0.35 }),
+        )
+        mesh.position.copy(start).add(end).multiplyScalar(0.5)
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize())
+        scene.add(mesh)
+      }
+
+      function stage(canvas, look, eye) {
+        const scene = new THREE.Scene()
+        const camera = new THREE.PerspectiveCamera(32, 1440 / 720, 0.1, 80)
+        camera.position.set(...eye)
+        camera.lookAt(...look)
+        lights(scene)
+        ground(scene)
+        rendererFor(canvas).render(scene, camera)
+        return scene
+      }
+
+      function architecture() {
+        const canvas = document.getElementById('architecture-canvas')
+        const scene = new THREE.Scene()
+        const camera = new THREE.PerspectiveCamera(32, 1440 / 720, 0.1, 80)
+        camera.position.set(10.2, 7.4, 11.4)
+        camera.lookAt(0.2, 1.15, 0.2)
+        lights(scene)
+        ground(scene)
+
+        pin(scene, slab(2.3, 0.28, 1.35), -4.5, 2.55, -1.5, 'Resident')
+        pin(scene, slab(2.6, 0.28, 1.35), 0.1, 2.55, -2.35, 'Coordinator')
+        pin(scene, slab(2.3, 0.28, 1.35), 4.6, 2.55, -1.5, 'Volunteer')
+        pin(scene, slab(2.05, 0.72, 1.15, 0x1b1520), -4.5, 1.05, 0.85, 'Outbox')
+        const db = slab(4.6, 1.35, 2.35, 0x141018)
+        db.position.set(0.35, 0.78, 0.15)
+        scene.add(db)
+        const dbLabel = caption('SpacetimeDB', true)
+        dbLabel.position.set(-2.85, 1.25, 2.15)
+        dbLabel.scale.set(3.2, 0.66, 1)
+        scene.add(dbLabel)
+        const chips = [
+          ['Request', -1.45],
+          ['Resource', -0.4],
+          ['Plan', 0.65],
+          ['Task', 1.7],
+        ]
+        for (const [name, x] of chips) {
+          const chip = slab(0.95, 0.2, 0.55, 0x221824)
+          chip.position.set(x, 1.62, 0.15)
+          scene.add(chip)
+          const chipLabel = caption(name, true)
+          chipLabel.position.set(x, 2.15, 0.15)
+          chipLabel.scale.set(1.95, 0.42, 1)
+          scene.add(chipLabel)
+        }
+        pin(scene, slab(3.3, 0.55, 1.15, 0x1b1520), 0.35, 0.4, 2.95, 'Solver')
+        pin(scene, slab(1.7, 0.7, 1.05, 0x12141a), 4.85, 0.5, 2.35, 'Investigate')
+
+        tube(scene, [-4.5, 2.35, -1.2], [-4.5, 1.5, 0.5])
+        tube(scene, [-3.3, 1.05, 0.85], [-1.6, 0.85, 0.4])
+        tube(scene, [0.1, 2.35, -1.7], [0.2, 1.55, 0.15])
+        tube(scene, [4.6, 2.35, -1.2], [2.2, 1.05, 0.3])
+        tube(scene, [0.35, 0.55, 1.4], [0.35, 0.55, 2.3])
+        tube(scene, [2.4, 0.7, 0.9], [4.2, 0.55, 2.0], 0x6d6572)
+
+        rendererFor(canvas).render(scene, camera)
+        void db
+      }
+
+      function states() {
+        const canvas = document.getElementById('states-canvas')
+        const scene = new THREE.Scene()
+        const camera = new THREE.PerspectiveCamera(32, 1440 / 720, 0.1, 80)
+        camera.position.set(8.4, 6.2, 12.2)
+        camera.lookAt(0, 0.9, 0)
+        lights(scene)
+        ground(scene)
+        const steps = ['Saved here', 'Received', 'Seen', 'Assigned', 'Delivered', 'Confirmed']
+        steps.forEach((name, index) => {
+          const x = -5.1 + index * 2.05
+          const h = 0.42 + index * 0.28
+          const mesh = slab(1.55, h, 1.15, index === 0 ? 0x1b1520 : 0x16141a)
+          pin(scene, mesh, x, h / 2, 0, name, index === steps.length - 1)
+          if (index > 0) {
+            const prevX = -5.1 + (index - 1) * 2.05
+            tube(scene, [prevX + 0.86, 0.1, 0.95], [x - 0.86, 0.1, 0.95])
+          }
+        })
+        rendererFor(canvas).render(scene, camera)
+      }
+
+      function token(color) {
+        const mesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.28, 0.28, 0.16, 24),
+          new THREE.MeshStandardMaterial({ color, roughness: 0.45 }),
+        )
+        mesh.castShadow = true
+        return mesh
+      }
+
+      function allocation() {
+        const canvas = document.getElementById('allocation-canvas')
+        const scene = new THREE.Scene()
+        const camera = new THREE.PerspectiveCamera(32, 1440 / 720, 0.1, 80)
+        camera.position.set(0.2, 7.6, 12.6)
+        camera.lookAt(0, 0.6, 0)
+        lights(scene)
+        ground(scene)
+
+        const islands = [
+          { x: -3.5, title: 'First-come', slots: [['Accessible', true, 'Request 1'], ['General', false, '']] },
+          { x: 3.5, title: 'Suitability', slots: [['Accessible', true, 'Request 2'], ['General', false, 'Request 1']] },
+        ]
+        for (const island of islands) {
+          const title = caption(island.title, true)
+          title.position.set(island.x, 2.55, -0.2)
+          title.scale.set(3.1, 0.64, 1)
+          scene.add(title)
+          island.slots.forEach((slot, index) => {
+            const z = index === 0 ? -0.35 : 1.7
+            const base = slab(2.15, 0.28, 1.05)
+            base.position.set(island.x, 0.14, z)
+            scene.add(base)
+            const slotName = caption(slot[0])
+            slotName.position.set(island.x - 1.7, 0.42, z)
+            slotName.scale.set(2.05, 0.42, 1)
+            scene.add(slotName)
+            if (slot[2]) {
+              const piece = token(0xed66b7)
+              piece.position.set(island.x + 0.2, 0.42, z)
+              scene.add(piece)
+              const who = caption(slot[2], true)
+              who.position.set(island.x + 1.45, 0.55, z)
+              who.scale.set(2.05, 0.42, 1)
+              scene.add(who)
+            }
+          })
+        }
+        const leftOut = caption('Request 2 unmatched', true)
+        leftOut.position.set(-3.5, 0.45, 3.35)
+        leftOut.scale.set(3.3, 0.52, 1)
+        scene.add(leftOut)
+        rendererFor(canvas).render(scene, camera)
+      }
+
+      architecture()
+      states()
+      allocation()
+      document.body.dataset.ready = 'yes'
+    </script>
+  </body>
+</html>

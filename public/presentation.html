@@ -1,0 +1,2369 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayAid — Autonomous Crisis Response at Scale | HackUTD 2026</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            obsidian: '#07090e',
+            panel: 'rgba(13, 18, 30, 0.72)',
+            statefarm: '#ef4444',
+            nvidia: '#76b900',
+            spacetime: '#00f0ff',
+            designtrack: '#a855f7'
+          },
+          fontFamily: {
+            display: ['"Space Grotesk"', 'sans-serif'],
+            sans: ['Inter', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- ES Module Import Map for Three.js r162+ & GSAP -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/",
+        "gsap": "https://esm.sh/gsap@3.12.5"
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #07090e;
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Full-bleed Three.js Canvas */
+    #webgl-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      pointer-events: auto;
+    }
+
+    /* Subtle tactical atmospheric overlays */
+    .vignette-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 72% 50%, rgba(7, 9, 14, 0.05) 0%, rgba(7, 9, 14, 0.68) 65%, rgba(7, 9, 14, 0.95) 100%),
+        linear-gradient(90deg, rgba(7, 9, 14, 0.94) 0%, rgba(7, 9, 14, 0.78) 36%, rgba(7, 9, 14, 0.12) 68%, rgba(7, 9, 14, 0.45) 100%);
+    }
+
+    .scanline-grid {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background-image:
+        linear-gradient(to right, rgba(148, 163, 184, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(circle at 30% 50%, black 20%, transparent 85%);
+    }
+
+    /* Glassmorphic UI tokens */
+    .glass-panel {
+      background: rgba(11, 15, 25, 0.72);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .glass-pill {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .glass-pill:hover {
+      border-color: rgba(255, 255, 255, 0.28);
+      background: rgba(30, 41, 59, 0.78);
+      transform: translateY(-1px);
+    }
+
+    /* Track Badge Variants */
+    .badge-statefarm {
+      background: rgba(239, 68, 68, 0.13);
+      border: 1px solid rgba(239, 68, 68, 0.42);
+      color: #fca5a5;
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.18);
+    }
+    .badge-nvidia {
+      background: rgba(118, 185, 0, 0.14);
+      border: 1px solid rgba(118, 185, 0, 0.45);
+      color: #bef264;
+      box-shadow: 0 0 18px rgba(118, 185, 0, 0.2);
+    }
+    .badge-spacetime {
+      background: rgba(0, 240, 255, 0.12);
+      border: 1px solid rgba(0, 240, 255, 0.42);
+      color: #67e8f9;
+      box-shadow: 0 0 18px rgba(0, 240, 255, 0.2);
+    }
+    .badge-design {
+      background: rgba(168, 85, 247, 0.14);
+      border: 1px solid rgba(168, 85, 247, 0.42);
+      color: #d8b4fe;
+      box-shadow: 0 0 18px rgba(168, 85, 247, 0.2);
+    }
+
+    /* Native Modal Dialog rules per Modern Web Guidance */
+    dialog:modal {
+      overscroll-behavior: contain;
+      border: none;
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      max-width: 92vw;
+      max-height: 90vh;
+    }
+
+    dialog::backdrop {
+      overflow: hidden;
+      overscroll-behavior: contain;
+      background-color: rgba(4, 6, 11, 0.78);
+      backdrop-filter: blur(10px);
+    }
+
+    /* Custom subtle scrollbars for HUD & drawers */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(7, 9, 14, 0.4);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.25);
+      border-radius: 9999px;
+    }
+
+    .headline-glow {
+      text-shadow: 0 0 40px rgba(255, 255, 255, 0.12);
+    }
+  </style>
+</head>
+<body class="relative select-none overflow-hidden bg-[#07090e] text-slate-100">
+
+  <!-- Continuous Full-Bleed Three.js Canvas -->
+  <canvas id="webgl-canvas" aria-label="Interactive 3D Crisis Response Visualization"></canvas>
+
+  <!-- Visual Vignette & Tactical Grid Overlays -->
+  <div class="vignette-overlay"></div>
+  <div class="scanline-grid"></div>
+
+  <!-- TOP TELEMETRY & TRACK HEADER -->
+  <header class="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-8 py-5 pointer-events-none">
+    <!-- Brand Identity -->
+    <div class="flex items-center gap-3.5 pointer-events-auto">
+      <div class="relative flex items-center justify-center w-9 h-9 rounded-xl glass-panel border border-cyan-400/30 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
+        <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping absolute"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-cyan-300 relative"></span>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-display font-bold tracking-tight text-sm text-white">RELAY<span class="text-cyan-400">AID</span></span>
+          <span class="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10">HACKUTD 2026</span>
+        </div>
+        <p id="scene-telemetry-label" class="font-mono text-[11px] text-slate-400 tracking-wider">SCENE 01 // RICHARDSON MESH ONLINE</p>
+      </div>
+    </div>
+
+    <!-- Center Slide Segmented Progress Pills -->
+    <nav aria-label="Slide Progress" class="hidden md:flex items-center gap-1.5 glass-panel px-3 py-2 rounded-full pointer-events-auto">
+      <div id="slide-dots" class="flex items-center gap-1.5"></div>
+    </nav>
+
+    <!-- Right Quick Actions & Speaker Badge -->
+    <div class="flex items-center gap-2.5 pointer-events-auto">
+      <button id="btn-speaker-hud" type="button" class="glass-pill px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-mono text-slate-300" title="Toggle Speaker Notes HUD (Shortcut: S)">
+        <span id="active-speaker-dot" class="w-2 h-2 rounded-full bg-cyan-400"></span>
+        <span id="active-speaker-pill">SPEAKER 1</span>
+        <kbd class="px-1.5 py-0.5 text-[10px] rounded bg-white/10 text-slate-300 border border-white/10">S</kbd>
+      </button>
+      <div class="glass-panel px-3 py-1.5 rounded-lg font-mono text-xs text-slate-300">
+        <span id="slide-counter-current" class="text-white font-semibold">01</span>
+        <span class="text-slate-600 mx-0.5">/</span>
+        <span class="text-slate-400">10</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN PRESENTATION STAGE -->
+  <main class="relative z-10 w-full h-full flex items-center px-8 md:px-14 lg:px-16 pt-16 pb-20 pointer-events-none">
+    <!-- LEFT 40% OF SCREEN: ULTRA-MINIMAL HIGH-IMPACT TYPOGRAPHY -->
+    <section class="w-full lg:w-[42%] max-w-xl flex flex-col justify-center pointer-events-auto">
+      <!-- Track Badges Row -->
+      <div id="slide-badges" class="flex flex-wrap items-center gap-2 mb-5"></div>
+
+      <!-- 3-Word Stat / Pill Tag -->
+      <div class="mb-3 inline-flex items-center">
+        <span id="slide-kicker" class="font-mono text-xs uppercase tracking-[0.2em] px-3 py-1 rounded-full bg-white/[0.06] border border-white/10 text-cyan-300">
+          AUTONOMOUS CRISIS MESH
+        </span>
+      </div>
+
+      <!-- Ultra-Minimal Headline -->
+      <h1 id="slide-headline" class="font-display font-bold text-4xl sm:text-5xl xl:text-6xl tracking-tight leading-[1.06] text-white headline-glow mb-4">
+        RelayAid
+      </h1>
+
+      <!-- Short Subtitle (Max 10-15 words total on screen) -->
+      <p id="slide-subtitle" class="text-lg sm:text-xl xl:text-2xl font-normal text-slate-300 leading-snug tracking-tight">
+        Autonomous Crisis Response at Scale.
+      </p>
+
+      <!-- 3D Scene Interactive Caption Pill -->
+      <div class="mt-7 flex items-center gap-3">
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/70 border border-white/10 text-xs font-mono text-slate-400">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="slide-3d-caption">3D WebGL: Richardson / HackUTD Wireframe Pulse Grid</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 8 ONLY: EMBEDDED LIVE HARDWARE DEMO MISSION CONTROL -->
+      <div id="slide8-mission-control" class="hidden mt-6 glass-panel rounded-2xl p-4 border border-cyan-400/30 shadow-[0_0_40px_rgba(0,240,255,0.12)]">
+        <div class="flex items-center justify-between border-b border-white/10 pb-2.5 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span class="font-mono text-xs font-semibold uppercase tracking-wider text-cyan-300">4-Step Live Demo Controller</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button id="btn-open-qr" type="button" class="glass-pill px-2.5 py-1 rounded-md text-[11px] font-mono text-cyan-200 border-cyan-400/40 flex items-center gap-1.5">
+              <span>QR Volunteer Join</span>
+              <kbd class="px-1 rounded bg-cyan-400/20 text-[10px]">Q</kbd>
+            </button>
+            <button id="btn-toggle-iframe" type="button" class="glass-pill px-2.5 py-1 rounded-md text-[11px] font-mono text-emerald-200 border-emerald-400/40 flex items-center gap-1.5">
+              <span id="iframe-btn-label">Open Live App Drawer</span>
+              <kbd class="px-1 rounded bg-emerald-400/20 text-[10px]">I</kbd>
+            </button>
+            <button id="btn-config-url" type="button" class="glass-pill px-2 py-1 rounded-md text-[11px] font-mono text-slate-300" title="Customize Live Demo & QR URL (Shortcut: D)">
+              <span>URL</span>
+              <kbd class="px-1 rounded bg-white/10 text-[10px]">D</kbd>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Interactive Phase Buttons -->
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" data-demo-step="1" class="demo-step-btn text-left p-2.5 rounded-xl bg-cyan-500/15 border border-cyan-400/50 transition-all">
+            <div class="flex items-center justify-between text-[10px] font-mono text-cyan-300 mb-0.5">
+              <span>STEP 01 // PHONE A</span>
+              <span class="px-1.5 py-0.2 rounded bg-cyan-400/20">ACTIVE</span>
+            </div>
+            <div class="font-display font-semibold text-xs text-white">GPS Pin Locked</div>
+          </button>
+
+          <button type="button" data-demo-step="2" class="demo-step-btn text-left p-2.5 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/25 transition-all">
+            <div class="flex items-center justify-between text-[10px] font-mono text-lime-300 mb-0.5">
+              <span>STEP 02 // NVIDIA</span>
+              <span>RIVA+DAG</span>
+            </div>
+            <div class="font-display font-semibold text-xs text-white">Nemotron Tool Trace</div>
+          </button>
+
+          <button type="button" data-demo-step="3" class="demo-step-btn text-left p-2.5 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/25 transition-all">
+            <div class="flex items-center justify-between text-[10px] font-mono text-cyan-300 mb-0.5">
+              <span>STEP 03 // SPACETIMEDB</span>
+              <span>ATOMIC</span>
+            </div>
+            <div class="font-display font-semibold text-xs text-white">Spacetime Stock 6 → 2</div>
+          </button>
+
+          <button type="button" data-demo-step="4" class="demo-step-btn text-left p-2.5 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/25 transition-all">
+            <div class="flex items-center justify-between text-[10px] font-mono text-emerald-300 mb-0.5">
+              <span>STEP 04 // SANDBOX</span>
+              <span>WEBRTC</span>
+            </div>
+            <div class="font-display font-semibold text-xs text-white">Sandbox ACK &amp; Ringing</div>
+          </button>
+        </div>
+
+        <!-- Live Step Telemetry Readout -->
+        <div id="demo-step-telemetry" class="mt-2.5 px-3 py-2 rounded-lg bg-black/50 border border-white/10 font-mono text-[11px] text-cyan-200 flex items-center justify-between">
+          <span id="demo-telemetry-text">[STEP 1] Resident Phone A: One-Shot GPS locked (32.9857° N, 96.7501° W ±6m)</span>
+          <span id="demo-url-indicator" class="text-slate-400 truncate max-w-[160px]">http://localhost:5173</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 10 ONLY: 4 CLEAN TRACK SUMMARY BADGES FOR Q&A -->
+      <div id="slide10-qa-grid" class="hidden mt-6 grid grid-cols-2 gap-2.5">
+        <div class="glass-panel p-3 rounded-xl border-l-2 border-l-red-500">
+          <div class="font-mono text-[10px] uppercase tracking-wider text-red-400">State Farm Track</div>
+          <div class="font-display font-semibold text-xs text-white mt-0.5">Worst Day at Scale</div>
+          <div class="text-[11px] text-slate-400">Closed-loop mutual aid &amp; zero silent drops.</div>
+        </div>
+        <div class="glass-panel p-3 rounded-xl border-l-2 border-l-[#76b900]">
+          <div class="font-mono text-[10px] uppercase tracking-wider text-lime-400">NVIDIA Track</div>
+          <div class="font-display font-semibold text-xs text-white mt-0.5">Nemotron Tool DAG</div>
+          <div class="text-[11px] text-slate-400">Grounded tool calls, zero raw DB writes.</div>
+        </div>
+        <div class="glass-panel p-3 rounded-xl border-l-2 border-l-cyan-400">
+          <div class="font-mono text-[10px] uppercase tracking-wider text-cyan-300">SpacetimeDB Track</div>
+          <div class="font-display font-semibold text-xs text-white mt-0.5">Atomic Reducers</div>
+          <div class="text-[11px] text-slate-400">6→2 stock lock &amp; instant WebSocket sync.</div>
+        </div>
+        <div class="glass-panel p-3 rounded-xl border-l-2 border-l-purple-400">
+          <div class="font-mono text-[10px] uppercase tracking-wider text-purple-300">Design Track</div>
+          <div class="font-display font-semibold text-xs text-white mt-0.5">Screen Zero &amp; Honesty</div>
+          <div class="text-[11px] text-slate-400">911 before login + encrypted local outbox.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 8 RIGHT-SIDE SPLIT-SCREEN LIVE APP IFRAME DRAWER -->
+    <aside id="slide8-iframe-drawer" class="hidden lg:w-[54%] h-[76vh] ml-auto glass-panel rounded-2xl border border-cyan-400/35 shadow-[0_0_60px_rgba(0,0,0,0.85)] flex-col overflow-hidden pointer-events-auto">
+      <div class="flex items-center justify-between px-4 py-2.5 bg-slate-950/80 border-b border-white/10">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-red-500/80"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
+          <span id="iframe-header-url" class="ml-2 font-mono text-xs text-cyan-300">http://localhost:5173</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-reload-iframe" type="button" class="glass-pill px-2.5 py-1 rounded text-[11px] font-mono text-slate-200">Reload</button>
+          <a id="link-external-app" href="http://localhost:5173" target="_blank" rel="noopener noreferrer" class="glass-pill px-2.5 py-1 rounded text-[11px] font-mono text-cyan-300">Pop Out ↗</a>
+          <button id="btn-close-iframe" type="button" class="glass-pill px-2.5 py-1 rounded text-[11px] font-mono text-slate-400 hover:text-white">Hide ✕</button>
+        </div>
+      </div>
+      <div class="relative flex-1 bg-[#07090e]">
+        <iframe id="live-app-iframe" src="about:blank" title="RelayAid Live Application" class="w-full h-full border-0"></iframe>
+        <div id="iframe-fallback-hint" class="pointer-events-none absolute bottom-3 right-3 glass-panel px-3 py-1.5 rounded-lg text-[11px] font-mono text-slate-300">
+          Press <kbd class="px-1 py-0.5 bg-white/10 rounded">D</kbd> to switch URL or <kbd class="px-1 py-0.5 bg-white/10 rounded">I</kbd> to return to full 3D Hologrid
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- DISCREET BOTTOM-LEFT SPEAKER NOTES & CUE HUD (TOGGLE WITH 'S') -->
+  <aside id="speaker-hud" aria-label="Speaker Notes and Cue HUD" class="fixed bottom-20 left-8 z-30 w-full max-w-lg glass-panel rounded-2xl p-4 border border-cyan-500/30 transition-all duration-300 pointer-events-auto">
+    <div class="flex items-center justify-between border-b border-white/10 pb-2 mb-2.5">
+      <div class="flex items-center gap-2">
+        <span class="px-2 py-0.5 rounded bg-cyan-500/20 border border-cyan-400/40 font-mono text-[11px] font-semibold text-cyan-300" id="hud-speaker-tag">
+          SPEAKER 1 — PITCH LEAD
+        </span>
+        <span id="hud-timing-tag" class="font-mono text-[11px] text-slate-400">0:00 – 0:25</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="font-mono text-[10px] text-slate-400">PRESS <kbd class="px-1 py-0.5 rounded bg-white/10 text-slate-300">S</kbd> TO HIDE</span>
+      </div>
+    </div>
+    <p id="hud-script-text" class="text-xs sm:text-sm text-slate-200 leading-relaxed font-normal"></p>
+    <div id="hud-stage-cue" class="mt-2.5 pt-2 border-t border-white/5 font-mono text-[11px] text-amber-300/90 flex items-center gap-2"></div>
+  </aside>
+
+  <!-- BOTTOM NAVIGATION BAR -->
+  <footer class="fixed bottom-0 left-0 right-0 z-20 flex items-center justify-between px-8 py-4 pointer-events-none">
+    <!-- Left Keyboard Legend -->
+    <div class="hidden sm:flex items-center gap-3 text-[11px] font-mono text-slate-400 pointer-events-auto">
+      <span class="glass-panel px-2.5 py-1 rounded-md">
+        <kbd class="text-slate-200">←</kbd> <kbd class="text-slate-200">→</kbd> / <kbd class="text-slate-200">SPACE</kbd> Navigate
+      </span>
+      <span class="glass-panel px-2.5 py-1 rounded-md">
+        <kbd class="text-slate-200">S</kbd> Speaker HUD
+      </span>
+      <span id="footer-slide8-shortcuts" class="hidden glass-panel px-2.5 py-1 rounded-md text-cyan-300 border-cyan-400/30">
+        <kbd class="text-white">Q</kbd> QR Modal · <kbd class="text-white">I</kbd> App Drawer · <kbd class="text-white">D</kbd> Set URL
+      </span>
+    </div>
+
+    <!-- Right On-Screen Glass Navigation Buttons -->
+    <div class="flex items-center gap-2.5 ml-auto pointer-events-auto">
+      <button id="btn-prev-slide" type="button" class="glass-pill px-4 py-2 rounded-xl font-mono text-xs text-slate-200 flex items-center gap-2 disabled:opacity-35">
+        <span>← Prev</span>
+      </button>
+      <button id="btn-next-slide" type="button" class="glass-pill px-5 py-2 rounded-xl font-mono text-xs font-semibold text-cyan-300 border-cyan-400/40 bg-cyan-500/10 flex items-center gap-2">
+        <span>Next Slide →</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- NATIVE MODAL 1: SCANNABLE JUDGE QR CODE MODAL (SLIDE 8) -->
+  <dialog id="qr-modal" closedby="any" aria-labelledby="qr-modal-title">
+    <div class="glass-panel rounded-3xl p-7 w-[440px] max-w-full border border-cyan-400/40 shadow-[0_0_80px_rgba(0,240,255,0.25)] text-center">
+      <div class="flex items-center justify-between mb-4">
+        <span class="font-mono text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-cyan-400/15 text-cyan-300 border border-cyan-400/30">
+          SpacetimeDB Live Multiplayer Join
+        </span>
+        <form method="dialog">
+          <button type="submit" autofocus class="glass-pill px-2.5 py-1 rounded-lg font-mono text-xs text-slate-300 hover:text-white">
+            ESC ✕
+          </button>
+        </form>
+      </div>
+
+      <h2 id="qr-modal-title" class="font-display font-bold text-2xl text-white mb-1">
+        Join as Live Volunteer
+      </h2>
+      <p class="text-xs text-slate-300 mb-5">
+        Scan to connect your phone to our live SpacetimeDB shelter instance (<code class="font-mono text-cyan-300">relayaid-demo</code>).
+      </p>
+
+      <!-- High-Contrast Scannable QR Container -->
+      <div class="mx-auto w-64 h-64 rounded-2xl bg-white p-3.5 shadow-[0_0_40px_rgba(0,240,255,0.3)] flex items-center justify-center">
+        <canvas id="qr-canvas" width="232" height="232" class="w-full h-full"></canvas>
+      </div>
+
+      <div class="mt-5 p-3 rounded-xl bg-black/50 border border-white/10">
+        <div class="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Live Endpoint Target</div>
+        <div id="qr-target-url-text" class="font-mono text-xs text-cyan-300 break-all select-all">http://localhost:5173/join/hackutd-volunteer</div>
+      </div>
+
+      <div class="mt-4 flex items-center justify-between text-[11px] font-mono text-slate-400">
+        <span>One-Use Role Invite · No Bearer Secret in URL</span>
+        <button id="btn-qr-edit-url" type="button" class="text-cyan-300 hover:underline">Change URL (D)</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- NATIVE MODAL 2: CUSTOMIZE LIVE DEMO / QR URL ON THE FLY (SHORTCUT 'D') -->
+  <dialog id="url-config-modal" closedby="any" aria-labelledby="url-modal-title">
+    <div class="glass-panel rounded-3xl p-6 w-[460px] max-w-full border border-white/20 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <span class="font-mono text-xs uppercase tracking-wider text-cyan-300">Live Demo Endpoint Configuration</span>
+        <form method="dialog">
+          <button type="submit" class="glass-pill px-2.5 py-1 rounded-lg font-mono text-xs text-slate-300">Cancel</button>
+        </form>
+      </div>
+
+      <h2 id="url-modal-title" class="font-display font-bold text-xl text-white mb-2">
+        Customize Live App &amp; QR Target URL
+      </h2>
+      <p class="text-xs text-slate-300 mb-4">
+        Update the local LAN IP or Cloudflare/ngrok HTTPS tunnel URL right before judging. Updates both the Slide 8 iframe and the Judge Volunteer QR code immediately.
+      </p>
+
+      <form id="url-config-form" class="space-y-4">
+        <div>
+          <label for="input-app-url" class="block font-mono text-xs text-slate-300 mb-1">Live App / Iframe URL</label>
+          <input id="input-app-url" type="url" required autofocus
+            class="w-full px-3.5 py-2 rounded-xl bg-slate-950/90 border border-white/15 font-mono text-xs text-white focus:outline-none focus:border-cyan-400"
+            placeholder="http://localhost:5173" />
+        </div>
+        <div>
+          <label for="input-qr-url" class="block font-mono text-xs text-slate-300 mb-1">Judge Volunteer QR Code Invite URL</label>
+          <input id="input-qr-url" type="url" required
+            class="w-full px-3.5 py-2 rounded-xl bg-slate-950/90 border border-white/15 font-mono text-xs text-white focus:outline-none focus:border-cyan-400"
+            placeholder="http://localhost:5173/join/hackutd-volunteer" />
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" id="btn-reset-urls" class="glass-pill px-3 py-2 rounded-xl font-mono text-xs text-slate-300">
+            Reset Default
+          </button>
+          <button type="submit" class="glass-pill px-4 py-2 rounded-xl font-mono text-xs font-semibold text-cyan-300 border-cyan-400/50 bg-cyan-500/20">
+            Save &amp; Update Live Deck
+          </button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- APPLICATION & THREE.JS / GSAP ENGINE -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import gsap from 'gsap';
+
+    /* ==========================================================================
+       1. LIGHT-DISMISS FALLBACK FOR NATIVE <dialog closedby="any">
+       ========================================================================== */
+    if (!('closedBy' in HTMLDialogElement.prototype)) {
+      const outside = (e, dialog) => {
+        const r = dialog.getBoundingClientRect();
+        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+      };
+      for (const dialog of document.querySelectorAll('dialog[closedby="any"]')) {
+        let pressedOutside = false;
+        dialog.addEventListener('pointerdown', (e) => { pressedOutside = outside(e, dialog); });
+        dialog.addEventListener('pointerup', (e) => { if (pressedOutside && outside(e, dialog)) dialog.close(); });
+      }
+    }
+
+    /* ==========================================================================
+       2. 10-SLIDE STORYLINE, ULTRA-MINIMAL TEXT & 4-SPEAKER SCRIPTS
+       ========================================================================== */
+    const SLIDES = [
+      {
+        id: 1,
+        telemetry: 'SCENE 01 // RICHARDSON / HACKUTD CALM MESH',
+        kicker: '4-TRACK UNIFIED ARCHITECTURE',
+        headline: 'RelayAid',
+        subtitle: 'Autonomous Crisis Response at Scale.',
+        caption3d: '3D WebGL: Richardson Wireframe City Grid + Calm Blue Telemetry Pulses',
+        badges: ['State Farm', 'NVIDIA', 'SpacetimeDB', 'Design'],
+        speaker: 'Speaker 1 — Pitch Lead',
+        speakerShort: 'SPEAKER 1',
+        timing: '0:00 – 0:25',
+        script:
+          '"Hi judges! We are RelayAid. Disasters don’t wait for cloud polling, sign-up walls, or hallucinating chatbots. Today we’re showing you an autonomous, zero-glue crisis response engine built for the worst day at scale—uniting State Farm resilience, NVIDIA Nemotron tool reasoning, SpacetimeDB atomic sync, and panic-first UX."',
+        cue: 'STAGE CUE: Calm blue 3D Richardson city grid rotates gently. Introduce all 4 teammates.',
+        camera: { pos: [0, 12, 26], lookAt: [-5, 0, 0] },
+        bloom: { strength: 1.15, radius: 0.55, threshold: 0.15 }
+      },
+      {
+        id: 2,
+        telemetry: 'SCENE 02 // 02:14 AM FLASH FLOOD & GRID COLLAPSE',
+        kicker: 'THE WORST DAY, AT SCALE',
+        headline: '02:14 AM. Flash Flood & Grid Collapse.',
+        subtitle: 'Thousands affected simultaneously.',
+        caption3d: '3D WebGL: Fractured City Geometry + Rising Flood Planes + Distress Beacons',
+        badges: ['State Farm'],
+        speaker: 'Speaker 1 — Pitch Lead',
+        speakerShort: 'SPEAKER 1',
+        timing: '0:25 – 0:50',
+        script:
+          '"2:14 AM in Richardson. A flash flood takes out substation power while hundreds of residents are stranded across North and South Hall. State Farm asks: when catastrophe hits thousands simultaneously, how do we identify urgent needs and coordinate aid so no one is overlooked?"',
+        cue: 'STAGE CUE: Watch the 3D city violently fracture into crimson while water planes flood the streets.',
+        camera: { pos: [2, 9.5, 22], lookAt: [-4.5, 1.0, 0] },
+        bloom: { strength: 1.45, radius: 0.65, threshold: 0.12 }
+      },
+      {
+        id: 3,
+        telemetry: 'SCENE 03 // DISPATCH BOTTLENECK & CHATBOT FAILURE',
+        kicker: 'SYSTEMIC FAILURE MODES',
+        headline: 'Dispatch Chokes. Group Chats Fragment.',
+        subtitle: 'Hallucinations cost lives.',
+        caption3d: '3D WebGL: 911 Tower Trajectory Bottleneck + Collision Error Sparks',
+        badges: ['State Farm', 'NVIDIA'],
+        speaker: 'Speaker 1 → Speaker 2 Handoff',
+        speakerShort: 'SPEAKER 1 → 2',
+        timing: '0:50 – 1:15',
+        script:
+          '"Speaker 1: Right now, two things fail at once: central dispatch chokes on thousands of simultaneous pings, and informal spreadsheets double-book scarce water. Speaker 2: Worse, wrapping a generic LLM chatbot around an emergency produces fake ETAs and dangerous medical hallucinations."',
+        cue: 'STAGE CUE: Particle trajectories bottleneck at the central 911 ring and burst into red sparks.',
+        camera: { pos: [0, 26, 21], lookAt: [-4.5, 25, 0] },
+        bloom: { strength: 1.5, radius: 0.6, threshold: 0.1 }
+      },
+      {
+        id: 4,
+        telemetry: 'SCENE 04 // SCREEN ZERO PANIC UX & REVOCABLE PRIVACY',
+        kicker: 'DISASTER PSYCHOLOGY UX',
+        headline: 'Screen Zero.',
+        subtitle: 'Life safety before login. Zero cognitive load.',
+        caption3d: '3D WebGL: Exploded Glass Smartphone + CALL 911 Layer + 3D Privacy Shields',
+        badges: ['Design'],
+        speaker: 'Speaker 2 — Design Lead',
+        speakerShort: 'SPEAKER 2',
+        timing: '1:15 – 1:45',
+        script:
+          '"When your hands are shaking in a dark shelter, you cannot navigate an OAuth wall. Our Screen Zero puts hardware-linked 911 access at the very top layer before any login. Beneath it, every permission—One-Shot GPS, Mic, and Callback—is task-scoped and revocable with a single tap."',
+        cue: 'STAGE CUE: 3D glass phone layers explode along the Z-axis revealing CALL 911 & 3 privacy shields.',
+        camera: { pos: [45, 2, 19], lookAt: [39.5, 0.5, 0] },
+        bloom: { strength: 1.25, radius: 0.5, threshold: 0.15 }
+      },
+      {
+        id: 5,
+        telemetry: 'SCENE 05 // RADICAL HONESTY & ENCRYPTED OUTBOX',
+        kicker: 'TRUST UNDER NETWORK LOSS',
+        headline: 'Radical Honesty.',
+        subtitle: 'Zero fake ETAs. Encrypted local outbox.',
+        caption3d: '3D WebGL: Encrypted Outbox Vault Cube + 4-Node Receipt Chain',
+        badges: ['Design', 'SpacetimeDB'],
+        speaker: 'Speaker 2 — Design Lead',
+        speakerShort: 'SPEAKER 2',
+        timing: '1:45 – 2:15',
+        script:
+          '"Most apps show a comforting spinner when cell towers drop. That lie gets people hurt. RelayAid practices Radical Honesty: if you are offline, your request locks inside an encrypted local IndexedDB vault and explicitly states: Saved on this device; nobody has been notified—until SpacetimeDB confirms receipt."',
+        cue: 'STAGE CUE: Watch Node 1 lock inside the 3D wireframe vault cube during network cut, then cascade.',
+        camera: { pos: [45, -27, 21], lookAt: [39.5, -28, 0] },
+        bloom: { strength: 1.2, radius: 0.5, threshold: 0.14 }
+      },
+      {
+        id: 6,
+        telemetry: 'SCENE 06 // NVIDIA RIVA ASR + NEMOTRON TOOL DAG',
+        kicker: 'BEYOND A CHATBOT',
+        headline: 'Voice to Action.',
+        subtitle: 'NVIDIA Riva ASR + Nemotron Tool DAG.',
+        caption3d: '3D WebGL: 3D Audio Waveform → Nemotron Core → 3 Geometric Function Beams',
+        badges: ['NVIDIA'],
+        speaker: 'Speaker 3 — Systems Lead',
+        speakerShort: 'SPEAKER 3',
+        timing: '2:15 – 2:50',
+        script:
+          '"For the NVIDIA track, Nemotron is never a free-form chat bot. Spoken panic and shelter bottlenecks stream into our bounded Nemotron worker, which executes a strict multi-step tool DAG—draft_request(), reserve_stock(), and send_referral()—citing verified snapshot IDs before a coordinator approves."',
+        cue: 'STAGE CUE: Audio waveform feeds green NVIDIA neural core, firing 3 laser tool beams.',
+        camera: { pos: [-45, 2, 21], lookAt: [-50.5, 0.5, 0] },
+        bloom: { strength: 1.35, radius: 0.55, threshold: 0.12 }
+      },
+      {
+        id: 7,
+        telemetry: 'SCENE 07 // SPACETIMEDB ATOMIC REDUCERS & WEBSOCKET SYNC',
+        kicker: 'ZERO GLUE CODE. ATOMIC TRUTH.',
+        headline: 'Zero Glue Code. Atomic Truth.',
+        subtitle: 'In-database reducers & instant multiplayer sync.',
+        caption3d: '3D WebGL: SpacetimeDB Cyan Hypercube + South Hall 6→2 Atomic Stock Drop',
+        badges: ['SpacetimeDB'],
+        speaker: 'Speaker 3 — Systems Lead',
+        speakerShort: 'SPEAKER 3',
+        timing: '2:50 – 3:25',
+        script:
+          '"All shelter state lives inside SpacetimeDB. When North Hall runs short on water and claims 4 units from South Hall, an in-database transactional reducer atomically drops South Hall’s stock from 6 to 2 and pushes real-time WebSocket diffs to every phone—zero REST glue, zero double-claiming."',
+        cue: 'STAGE CUE: Cyan hypercube fires transaction beam; 6 glowing water cubes in South Hall drop to 2.',
+        camera: { pos: [-45, -26, 22], lookAt: [-50.5, -28, 0] },
+        bloom: { strength: 1.35, radius: 0.55, threshold: 0.14 }
+      },
+      {
+        id: 8,
+        telemetry: 'SCENE 08 // LIVE HARDWARE DEMO MISSION CONTROL',
+        kicker: 'LIVE MULTI-PHONE CHOREOGRAPHY',
+        headline: 'Live Scenario: Building Flood at HackUTD.',
+        subtitle: 'Real phones. Real SpacetimeDB. Real time.',
+        caption3d: '3D WebGL: Interactive HackUTD Tactical Venue Hologrid + Live Step Highlights',
+        badges: ['SpacetimeDB', 'NVIDIA', 'State Farm', 'Design'],
+        speaker: 'Speaker 4 — Demo Choreographer',
+        speakerShort: 'SPEAKER 4',
+        timing: '3:25 – 4:55 (90s Live Demo)',
+        script:
+          '"Let’s run this live across our phones! Step 1: On Phone A, we lock a one-shot GPS request in airplane mode, then reconnect. Step 2: Watch the laptop trace as Nemotron investigates our bottleneck and proposes a cross-shelter transfer. Step 3: Scan the QR code (Press Q) as a Volunteer—watch South Hall water drop atomically from 6 to 2. Step 4: Synthetic Responder ACK & live follow-up!"',
+        cue: 'CHOREOGRAPHY: Press [Q] for Judge QR · Click Steps 1→4 or Press [I] for Live App Iframe · [D] Edit URL.',
+        camera: { pos: [0, 39, 22], lookAt: [-4.5, 34, 0] },
+        bloom: { strength: 1.15, radius: 0.45, threshold: 0.18 }
+      },
+      {
+        id: 9,
+        telemetry: 'SCENE 09 // SYNTHETIC SANDBOX & DETERMINISTIC SAFETY',
+        kicker: 'ENGINEERING RIGOR & GUARDRAILS',
+        headline: 'Bounded Autonomy.',
+        subtitle: 'Deterministic policy. Never silently closed.',
+        caption3d: '3D WebGL: Firewall Matrix + Signed Webhook Packets + Guardian Callback Satellite',
+        badges: ['State Farm', 'NVIDIA', 'SpacetimeDB'],
+        speaker: 'Speaker 3 — Systems Lead',
+        speakerShort: 'SPEAKER 3',
+        timing: '4:55 – 5:25',
+        script:
+          '"Why a Synthetic Responder Sandbox? Because an autonomous AI must never cold-dial real municipal 911 without agency contracts. Our firewall enforces schema-checked tool calls, human approval on every reservation, and an autonomous guardian timer so an unconfirmed delivery is never silently closed."',
+        cue: 'STAGE CUE: Signed packets traverse the 3D firewall while the guardian callback satellite orbits.',
+        camera: { pos: [0, -25, 22], lookAt: [-5.0, -28, 0] },
+        bloom: { strength: 1.25, radius: 0.5, threshold: 0.14 }
+      },
+      {
+        id: 10,
+        telemetry: 'SCENE 10 // UNIFIED CONSTELLATION & Q&A',
+        kicker: 'HACKUTD 2026 FINALE',
+        headline: 'RelayAid.',
+        subtitle: 'Fast aid. Protected stock. No one overlooked.',
+        caption3d: '3D WebGL: Healed Emerald/Cyan City Mesh + Unified Crisis Constellation',
+        badges: ['State Farm', 'NVIDIA', 'SpacetimeDB', 'Design'],
+        speaker: 'Speaker 1 — Pitch Lead',
+        speakerShort: 'SPEAKER 1',
+        timing: '5:25 – 6:00 (Closing & Q&A)',
+        script:
+          '"From Screen Zero panic UX and offline honesty, to NVIDIA Nemotron’s grounded tool DAG, to SpacetimeDB’s atomic multi-shelter sync—RelayAid closes the loop from unmet need to verified assistance. Fast aid, protected stock, and no one overlooked. Thank you—we’d love your questions!"',
+        cue: 'STAGE CUE: The fractured city heals into emerald & cyan harmony with a unified constellation dome.',
+        camera: { pos: [0, 13, 27], lookAt: [-5, 2, 0] },
+        bloom: { strength: 1.35, radius: 0.6, threshold: 0.12 }
+      }
+    ];
+
+    /* ==========================================================================
+       3. ZERO-DEPENDENCY DETERMINISTIC QR CODE RENDERER (CANVAS)
+       Draws a scannable-style high-contrast QR matrix + loads live QR image
+       with instant offline procedural fallback so Slide 8 never breaks offline.
+       ========================================================================== */
+    function renderQRCodeToCanvas(canvas, urlString) {
+      const ctx = canvas.getContext('2d');
+      const size = canvas.width;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+
+      // First draw a crisp deterministic 29x29 QR version-3 matrix synchronously
+      const modules = 29;
+      const quiet = 2;
+      const total = modules + quiet * 2;
+      const cell = size / total;
+
+      const grid = Array.from({ length: modules }, () => Array(modules).fill(false));
+      const reserved = Array.from({ length: modules }, () => Array(modules).fill(false));
+
+      const drawFinder = (r0, c0) => {
+        for (let r = -1; r <= 7; r++) {
+          for (let c = -1; c <= 7; c++) {
+            const rr = r0 + r;
+            const cc = c0 + c;
+            if (rr < 0 || rr >= modules || cc < 0 || cc >= modules) continue;
+            reserved[rr][cc] = true;
+            const inOuter = r >= 0 && r <= 6 && c >= 0 && c <= 6 && (r === 0 || r === 6 || c === 0 || c === 6);
+            const inInner = r >= 2 && r <= 4 && c >= 2 && c <= 4;
+            grid[rr][cc] = inOuter || inInner;
+          }
+        }
+      };
+
+      drawFinder(0, 0);
+      drawFinder(0, modules - 7);
+      drawFinder(modules - 7, 0);
+
+      // Alignment pattern at (20, 20)
+      for (let r = -2; r <= 2; r++) {
+        for (let c = -2; c <= 2; c++) {
+          const rr = 22 + r;
+          const cc = 22 + c;
+          reserved[rr][cc] = true;
+          grid[rr][cc] = Math.max(Math.abs(r), Math.abs(c)) !== 1;
+        }
+      }
+
+      // Timing patterns
+      for (let i = 8; i < modules - 8; i++) {
+        reserved[6][i] = true;
+        reserved[i][6] = true;
+        grid[6][i] = i % 2 === 0;
+        grid[i][6] = i % 2 === 0;
+      }
+
+      // Deterministic hash stream from urlString
+      let hash = 2166136261;
+      for (let i = 0; i < urlString.length; i++) {
+        hash ^= urlString.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+
+      let seed = hash >>> 0;
+      for (let r = 0; r < modules; r++) {
+        for (let c = 0; c < modules; c++) {
+          if (reserved[r][c]) continue;
+          seed ^= seed << 13;
+          seed ^= seed >>> 17;
+          seed ^= seed << 5;
+          const bit = ((seed >>> 0) + r * 31 + c * 17 + urlString.charCodeAt((r + c) % urlString.length)) & 1;
+          grid[r][c] = bit === 1;
+        }
+      }
+
+      ctx.fillStyle = '#07090e';
+      for (let r = 0; r < modules; r++) {
+        for (let c = 0; c < modules; c++) {
+          if (grid[r][c]) {
+            ctx.fillRect(
+              Math.floor((c + quiet) * cell),
+              Math.floor((r + quiet) * cell),
+              Math.ceil(cell),
+              Math.ceil(cell)
+            );
+          }
+        }
+      }
+
+      // Also attempt to overlay a standard scannable QR image if network is available
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, size, size);
+        ctx.drawImage(img, 0, 0, size, size);
+      };
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&color=07090e&bgcolor=ffffff&data=${encodeURIComponent(urlString)}`;
+    }
+
+    /* ==========================================================================
+       4. 3D CANVAS TEXT SPRITE HELPER (Procedural 3D Labels)
+       ========================================================================== */
+    function createLabelSprite(text, {
+      bg = 'rgba(7, 12, 24, 0.86)',
+      border = '#00f0ff',
+      color = '#ffffff',
+      scale = [4.2, 1.05]
+    } = {}) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+
+      // Rounded pill background
+      ctx.fillStyle = bg;
+      ctx.strokeStyle = border;
+      ctx.lineWidth = 6;
+      const r = 28;
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 496, 112, r);
+      ctx.fill();
+      ctx.stroke();
+
+      // Monospace label
+      ctx.fillStyle = color;
+      ctx.font = 'bold 34px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 256, 66);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.needsUpdate = true;
+      const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthWrite: false
+      });
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.set(scale[0], scale[1], 1);
+      return sprite;
+    }
+
+    /* ==========================================================================
+       5. THREE.JS SCENE, CAMERA, POSTPROCESSING & PROCEDURAL STAGES
+       ========================================================================== */
+    const canvas = document.getElementById('webgl-canvas');
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      powerPreference: 'high-performance'
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#07090e');
+    scene.fog = new THREE.FogExp2('#07090e', 0.015);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 300);
+    camera.position.set(0, 12, 26);
+    const cameraLookTarget = new THREE.Vector3(-5, 0, 0);
+    camera.lookAt(cameraLookTarget);
+
+    // Post-processing with UnrealBloomPass
+    const composer = new EffectComposer(renderer);
+    const renderPass = new RenderPass(scene, camera);
+    composer.addPass(renderPass);
+
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      1.15,
+      0.55,
+      0.15
+    );
+    composer.addPass(bloomPass);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.85);
+    scene.add(ambientLight);
+
+    const dirLight1 = new THREE.DirectionalLight(0x00f0ff, 2.2);
+    dirLight1.position.set(18, 30, 22);
+    scene.add(dirLight1);
+
+    const dirLight2 = new THREE.DirectionalLight(0xef4444, 1.2);
+    dirLight2.position.set(-20, -15, -10);
+    scene.add(dirLight2);
+
+    // Ambient Starfield / Data Dust across entire 3D world
+    const ambientDustGeo = new THREE.BufferGeometry();
+    const dustCount = 1400;
+    const dustPositions = new Float32Array(dustCount * 3);
+    for (let i = 0; i < dustCount; i++) {
+      dustPositions[i * 3] = (Math.random() - 0.5) * 160;
+      dustPositions[i * 3 + 1] = (Math.random() - 0.5) * 110;
+      dustPositions[i * 3 + 2] = (Math.random() - 0.5) * 90;
+    }
+    ambientDustGeo.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+    const ambientDustMat = new THREE.PointsMaterial({
+      color: 0x38bdf8,
+      size: 0.18,
+      transparent: true,
+      opacity: 0.45
+    });
+    const ambientDust = new THREE.Points(ambientDustGeo, ambientDustMat);
+    scene.add(ambientDust);
+
+    /* --------------------------------------------------------------------------
+       STAGE A (Origin [0, 0, 0]): CITY METROPOLIS (Slides 1, 2, 10)
+       Represents Richardson / HackUTD Venue Grid
+       -------------------------------------------------------------------------- */
+    const cityStage = new THREE.Group();
+    cityStage.position.set(0, 0, 0);
+    scene.add(cityStage);
+
+    const gridHelper = new THREE.GridHelper(32, 32, 0x00f0ff, 0x1e293b);
+    gridHelper.position.y = -2.2;
+    cityStage.add(gridHelper);
+
+    const cityBuildings = [];
+    const distressBeacons = [];
+    const boxBaseGeo = new THREE.BoxGeometry(1, 1, 1);
+    const beaconGeo = new THREE.OctahedronGeometry(0.28, 0);
+
+    for (let gx = -5; gx <= 5; gx++) {
+      for (let gz = -5; gz <= 5; gz++) {
+        if (Math.abs(gx) <= 1 && Math.abs(gz) <= 1 && (gx !== 0 || gz !== 0)) continue;
+        const dist = Math.hypot(gx, gz);
+        if (dist > 5.8) continue;
+
+        const h = 1.2 + Math.max(0, (5.5 - dist) * 0.85) + ((Math.abs(gx * 17 + gz * 31) % 7) * 0.45);
+        const w = 0.72 + ((Math.abs(gx * 13 + gz * 7) % 3) * 0.14);
+
+        const bMat = new THREE.MeshStandardMaterial({
+          color: 0x0b1324,
+          emissive: 0x00a8ff,
+          emissiveIntensity: 0.28,
+          roughness: 0.25,
+          metalness: 0.8,
+          transparent: true,
+          opacity: 0.92
+        });
+
+        const mesh = new THREE.Mesh(boxBaseGeo, bMat);
+        mesh.scale.set(w, h, w);
+        const baseX = gx * 2.1;
+        const baseY = -2.2 + h / 2;
+        const baseZ = gz * 2.1;
+        mesh.position.set(baseX, baseY, baseZ);
+
+        // Wireframe edges for each building
+        const edgesGeo = new THREE.EdgesGeometry(boxBaseGeo);
+        const edgesMat = new THREE.LineBasicMaterial({
+          color: 0x00f0ff,
+          transparent: true,
+          opacity: 0.65
+        });
+        const wireframe = new THREE.LineSegments(edgesGeo, edgesMat);
+        mesh.add(wireframe);
+
+        cityStage.add(mesh);
+
+        // Add distress / resolved beacon above taller buildings
+        let beacon = null;
+        let flareLine = null;
+        if ((Math.abs(gx * 3 + gz * 5) % 3) === 0) {
+          const beaconMat = new THREE.MeshStandardMaterial({
+            color: 0xff2a4b,
+            emissive: 0xff1e42,
+            emissiveIntensity: 1.8
+          });
+          beacon = new THREE.Mesh(beaconGeo, beaconMat);
+          beacon.position.set(baseX, baseY + h / 2 + 0.9, baseZ);
+          beacon.visible = false;
+          cityStage.add(beacon);
+
+          const flarePoints = [
+            new THREE.Vector3(baseX, baseY + h / 2, baseZ),
+            new THREE.Vector3(baseX, baseY + h / 2 + 3.2, baseZ)
+          ];
+          const flareGeo = new THREE.BufferGeometry().setFromPoints(flarePoints);
+          const flareMat = new THREE.LineBasicMaterial({
+            color: 0xff2a4b,
+            transparent: true,
+            opacity: 0.75
+          });
+          flareLine = new THREE.Line(flareGeo, flareMat);
+          flareLine.visible = false;
+          cityStage.add(flareLine);
+
+          distressBeacons.push({ beacon, flareLine, baseX, baseY: baseY + h / 2 + 0.9, baseZ, phase: Math.random() * Math.PI * 2 });
+        }
+
+        cityBuildings.push({
+          mesh,
+          wireframe,
+          bMat,
+          edgesMat,
+          baseX,
+          baseY,
+          baseZ,
+          h,
+          fractureRotX: (Math.random() - 0.5) * 0.36,
+          fractureRotZ: (Math.random() - 0.5) * 0.36,
+          fractureOffsetY: -0.4 - Math.random() * 0.8
+        });
+      }
+    }
+
+    // Calm Data Pulses flowing through city streets (Slide 1 & 10)
+    const streetPulseCount = 160;
+    const streetPulseGeo = new THREE.BufferGeometry();
+    const streetPulsePos = new Float32Array(streetPulseCount * 3);
+    const streetPulseVel = [];
+    for (let i = 0; i < streetPulseCount; i++) {
+      const alongX = i % 2 === 0;
+      const lane = (Math.floor(Math.random() * 9) - 4) * 2.1;
+      const coord = (Math.random() - 0.5) * 22;
+      streetPulsePos[i * 3] = alongX ? coord : lane;
+      streetPulsePos[i * 3 + 1] = -2.08;
+      streetPulsePos[i * 3 + 2] = alongX ? lane : coord;
+      streetPulseVel.push({ alongX, speed: (0.08 + Math.random() * 0.12) * (Math.random() < 0.5 ? 1 : -1) });
+    }
+    streetPulseGeo.setAttribute('position', new THREE.BufferAttribute(streetPulsePos, 3));
+    const streetPulseMat = new THREE.PointsMaterial({
+      color: 0x00f0ff,
+      size: 0.32,
+      transparent: true,
+      opacity: 0.9
+    });
+    const streetPulses = new THREE.Points(streetPulseGeo, streetPulseMat);
+    cityStage.add(streetPulses);
+
+    // Rising Translucent 3D Flood Water Plane (Slide 2)
+    const waterGeo = new THREE.PlaneGeometry(30, 30, 36, 36);
+    waterGeo.rotateX(-Math.PI / 2);
+    const waterMat = new THREE.MeshStandardMaterial({
+      color: 0x0284c7,
+      emissive: 0xdc2626,
+      emissiveIntensity: 0.35,
+      transparent: true,
+      opacity: 0.0,
+      wireframe: false,
+      roughness: 0.15,
+      metalness: 0.75
+    });
+    const floodWaterMesh = new THREE.Mesh(waterGeo, waterMat);
+    floodWaterMesh.position.y = -3.2;
+    cityStage.add(floodWaterMesh);
+
+    const waterWireGeo = new THREE.PlaneGeometry(30, 30, 24, 24);
+    waterWireGeo.rotateX(-Math.PI / 2);
+    const waterWireMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.0
+    });
+    const floodWaterWire = new THREE.Mesh(waterWireGeo, waterWireMat);
+    floodWaterMesh.add(floodWaterWire);
+
+    // Unified Constellation Dome above City (Slide 10 Finale)
+    const constellationGroup = new THREE.Group();
+    constellationGroup.visible = false;
+    cityStage.add(constellationGroup);
+
+    const constellationLinePoints = [];
+    for (let i = 0; i < distressBeacons.length; i++) {
+      const a = distressBeacons[i];
+      const b = distressBeacons[(i + 1) % distressBeacons.length];
+      const c = distressBeacons[(i + 3) % distressBeacons.length];
+      constellationLinePoints.push(
+        new THREE.Vector3(a.baseX, a.baseY + 2.5, a.baseZ),
+        new THREE.Vector3(b.baseX, b.baseY + 2.5, b.baseZ),
+        new THREE.Vector3(a.baseX, a.baseY + 2.5, a.baseZ),
+        new THREE.Vector3(0, 7.2, 0),
+        new THREE.Vector3(a.baseX, a.baseY + 2.5, a.baseZ),
+        new THREE.Vector3(c.baseX, c.baseY + 2.5, c.baseZ)
+      );
+    }
+    const constGeo = new THREE.BufferGeometry().setFromPoints(constellationLinePoints);
+    const constMat = new THREE.LineBasicMaterial({
+      color: 0x10b981,
+      transparent: true,
+      opacity: 0.75
+    });
+    const constellationLines = new THREE.LineSegments(constGeo, constMat);
+    constellationGroup.add(constellationLines);
+
+    const crownRing = new THREE.Mesh(
+      new THREE.TorusGeometry(6.5, 0.06, 16, 100),
+      new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.8 })
+    );
+    crownRing.rotation.x = Math.PI / 2;
+    crownRing.position.y = 6.8;
+    constellationGroup.add(crownRing);
+
+    // State variable for City Mode: 'calm' (Slide 1), 'disaster' (Slide 2), 'healed' (Slide 10)
+    const cityState = { mode: 'calm', fractureFactor: 0 };
+
+    function transitionCityMode(mode) {
+      cityState.mode = mode;
+      if (mode === 'calm') {
+        gsap.to(cityState, { fractureFactor: 0, duration: 1.4, ease: 'power3.out' });
+        gsap.to(floodWaterMesh.position, { y: -3.4, duration: 1.2 });
+        gsap.to(waterMat, { opacity: 0, duration: 1.0 });
+        gsap.to(waterWireMat, { opacity: 0, duration: 1.0 });
+        constellationGroup.visible = false;
+        distressBeacons.forEach(({ beacon, flareLine }) => {
+          beacon.visible = false;
+          flareLine.visible = false;
+        });
+        cityBuildings.forEach((b) => {
+          gsap.to(b.bMat.emissive, { r: 0, g: 0.65, b: 1.0, duration: 1.2 });
+          gsap.to(b.edgesMat.color, { r: 0, g: 0.94, b: 1.0, duration: 1.2 });
+        });
+      } else if (mode === 'disaster') {
+        gsap.to(cityState, { fractureFactor: 1, duration: 1.3, ease: 'elastic.out(1, 0.6)' });
+        gsap.to(floodWaterMesh.position, { y: -0.35, duration: 1.6, ease: 'power2.out' });
+        gsap.to(waterMat, { opacity: 0.52, duration: 1.2 });
+        gsap.to(waterWireMat, { opacity: 0.38, duration: 1.2 });
+        constellationGroup.visible = false;
+        distressBeacons.forEach(({ beacon, flareLine }) => {
+          beacon.visible = true;
+          flareLine.visible = true;
+          beacon.material.color.setHex(0xff2a4b);
+          beacon.material.emissive.setHex(0xff1e42);
+          flareLine.material.color.setHex(0xff2a4b);
+        });
+        cityBuildings.forEach((b) => {
+          gsap.to(b.bMat.emissive, { r: 0.95, g: 0.18, b: 0.08, duration: 1.0 });
+          gsap.to(b.edgesMat.color, { r: 1.0, g: 0.28, b: 0.15, duration: 1.0 });
+        });
+      } else if (mode === 'healed') {
+        gsap.to(cityState, { fractureFactor: 0, duration: 1.5, ease: 'power3.out' });
+        gsap.to(floodWaterMesh.position, { y: -3.4, duration: 1.3 });
+        gsap.to(waterMat, { opacity: 0, duration: 1.0 });
+        gsap.to(waterWireMat, { opacity: 0, duration: 1.0 });
+        constellationGroup.visible = true;
+        distressBeacons.forEach(({ beacon, flareLine }) => {
+          beacon.visible = true;
+          flareLine.visible = true;
+          beacon.material.color.setHex(0x10b981);
+          beacon.material.emissive.setHex(0x00f0ff);
+          flareLine.material.color.setHex(0x10b981);
+        });
+        cityBuildings.forEach((b) => {
+          gsap.to(b.bMat.emissive, { r: 0.06, g: 0.85, b: 0.65, duration: 1.2 });
+          gsap.to(b.edgesMat.color, { r: 0.1, g: 0.95, b: 0.78, duration: 1.2 });
+        });
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       STAGE B ([0, 25, 0]): THE 911 CHOKE & CHAOS (Slide 3)
+       Hundreds of glowing particle trajectories bottlenecking & sparking
+       -------------------------------------------------------------------------- */
+    const chokeStage = new THREE.Group();
+    chokeStage.position.set(0, 25, 0);
+    scene.add(chokeStage);
+
+    // Central 911 Bottleneck Tower & Choke Ring
+    const chokeRing = new THREE.Mesh(
+      new THREE.TorusGeometry(2.1, 0.16, 20, 64),
+      new THREE.MeshStandardMaterial({
+        color: 0xff2a4b,
+        emissive: 0xef4444,
+        emissiveIntensity: 1.8
+      })
+    );
+    chokeRing.rotation.x = Math.PI / 2;
+    chokeRing.position.y = 2.2;
+    chokeStage.add(chokeRing);
+
+    const chokeCore = new THREE.Mesh(
+      new THREE.OctahedronGeometry(1.15, 1),
+      new THREE.MeshStandardMaterial({
+        color: 0xfef2f2,
+        emissive: 0xff1e42,
+        emissiveIntensity: 2.0,
+        wireframe: true
+      })
+    );
+    chokeCore.position.y = 2.2;
+    chokeStage.add(chokeCore);
+
+    const chokeLabel = createLabelSprite('911 DISPATCH CHOKE POINT', {
+      border: '#ef4444',
+      color: '#fca5a5',
+      scale: [5.5, 1.2]
+    });
+    chokeLabel.position.set(0, 4.5, 0);
+    chokeStage.add(chokeLabel);
+
+    // 360 Rising & Colliding Trajectory Particles
+    const trajCount = 360;
+    const trajGeo = new THREE.BufferGeometry();
+    const trajPos = new Float32Array(trajCount * 3);
+    const trajCol = new Float32Array(trajCount * 3);
+    const trajMeta = [];
+
+    for (let i = 0; i < trajCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 3.5 + Math.random() * 9.5;
+      trajMeta.push({
+        angle,
+        radius,
+        t: Math.random(),
+        speed: 0.006 + Math.random() * 0.01,
+        sparkVec: new THREE.Vector3(
+          (Math.random() - 0.5) * 8,
+          (Math.random() - 0.2) * 5,
+          (Math.random() - 0.5) * 8
+        )
+      });
+    }
+    trajGeo.setAttribute('position', new THREE.BufferAttribute(trajPos, 3));
+    trajGeo.setAttribute('color', new THREE.BufferAttribute(trajCol, 3));
+
+    const trajMat = new THREE.PointsMaterial({
+      size: 0.34,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.95
+    });
+    const trajPoints = new THREE.Points(trajGeo, trajMat);
+    chokeStage.add(trajPoints);
+
+    /* --------------------------------------------------------------------------
+       STAGE C ([45, 0, 0]): SCREEN ZERO EXPLODED SMARTPHONE (Slide 4)
+       -------------------------------------------------------------------------- */
+    const phoneStage = new THREE.Group();
+    phoneStage.position.set(45, 0, 0);
+    phoneStage.rotation.y = -0.35;
+    scene.add(phoneStage);
+
+    // Base Chassis Layer
+    const chassisGeo = new THREE.BoxGeometry(5.6, 10.6, 0.35);
+    const chassisMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      emissive: 0x1e293b,
+      emissiveIntensity: 0.4,
+      metalness: 0.85,
+      roughness: 0.2,
+      transparent: true,
+      opacity: 0.9
+    });
+    const phoneChassis = new THREE.Mesh(chassisGeo, chassisMat);
+    phoneChassis.add(
+      new THREE.LineSegments(
+        new THREE.EdgesGeometry(chassisGeo),
+        new THREE.LineBasicMaterial({ color: 0x64748b })
+      )
+    );
+    phoneStage.add(phoneChassis);
+
+    // Middle Layer: Glass UI Surface
+    const glassLayerGeo = new THREE.BoxGeometry(5.2, 9.8, 0.12);
+    const glassLayerMat = new THREE.MeshStandardMaterial({
+      color: 0x0ea5e9,
+      emissive: 0x0284c7,
+      emissiveIntensity: 0.35,
+      transparent: true,
+      opacity: 0.42
+    });
+    const phoneGlassLayer = new THREE.Mesh(glassLayerGeo, glassLayerMat);
+    phoneGlassLayer.position.z = 1.6;
+    phoneGlassLayer.add(
+      new THREE.LineSegments(
+        new THREE.EdgesGeometry(glassLayerGeo),
+        new THREE.LineBasicMaterial({ color: 0x38bdf8 })
+      )
+    );
+    phoneStage.add(phoneGlassLayer);
+
+    // Top Exploded Layer: Glowing Red CALL 911 Bar
+    const call911Geo = new THREE.BoxGeometry(4.8, 1.45, 0.28);
+    const call911Mat = new THREE.MeshStandardMaterial({
+      color: 0xef4444,
+      emissive: 0xff1e42,
+      emissiveIntensity: 1.65
+    });
+    const call911Bar = new THREE.Mesh(call911Geo, call911Mat);
+    call911Bar.position.set(0, 3.2, 3.3);
+    phoneStage.add(call911Bar);
+
+    const call911Label = createLabelSprite('CALL 911 // HARDWARE LINK', {
+      bg: 'rgba(127, 29, 29, 0.95)',
+      border: '#fca5a5',
+      color: '#ffffff',
+      scale: [4.6, 1.1]
+    });
+    call911Label.position.set(0, 3.2, 3.75);
+    phoneStage.add(call911Label);
+
+    // 3 Isolated Toggleable 3D Privacy Shields (One-Shot GPS, Mic, Callback)
+    const shieldConfigs = [
+      { title: 'ONE-SHOT GPS', x: -2.1, y: -0.6, color: 0x00f0ff, hex: '#00f0ff' },
+      { title: 'MIC STREAM', x: 0.0, y: -1.8, color: 0xa855f7, hex: '#a855f7' },
+      { title: 'CALLBACK TIMER', x: 2.1, y: -0.6, color: 0x10b981, hex: '#10b981' }
+    ];
+    const privacyShields = [];
+    const shieldGeo = new THREE.CylinderGeometry(1.05, 1.05, 0.22, 6);
+    shieldGeo.rotateX(Math.PI / 2);
+
+    shieldConfigs.forEach((cfg, idx) => {
+      const sGroup = new THREE.Group();
+      sGroup.position.set(cfg.x, cfg.y, 2.75 + idx * 0.35);
+
+      const sMat = new THREE.MeshStandardMaterial({
+        color: cfg.color,
+        emissive: cfg.color,
+        emissiveIntensity: 0.9,
+        transparent: true,
+        opacity: 0.78
+      });
+      const sMesh = new THREE.Mesh(shieldGeo, sMat);
+      sMesh.add(
+        new THREE.LineSegments(
+          new THREE.EdgesGeometry(shieldGeo),
+          new THREE.LineBasicMaterial({ color: 0xffffff })
+        )
+      );
+      sGroup.add(sMesh);
+
+      const lbl = createLabelSprite(cfg.title, {
+        border: cfg.hex,
+        color: '#f8fafc',
+        scale: [2.8, 0.72]
+      });
+      lbl.position.set(0, -1.45, 0.2);
+      sGroup.add(lbl);
+
+      phoneStage.add(sGroup);
+      privacyShields.push({ group: sGroup, mesh: sMesh, baseZ: sGroup.position.z, idx });
+    });
+
+    /* --------------------------------------------------------------------------
+       STAGE D ([45, -28, 0]): RADICAL HONESTY & ENCRYPTED OUTBOX VAULT (Slide 5)
+       4 State Nodes: Saved on Device -> Received -> ACK -> Dispatched
+       -------------------------------------------------------------------------- */
+    const honestyStage = new THREE.Group();
+    honestyStage.position.set(45, -28, 0);
+    scene.add(honestyStage);
+
+    const stateNodeDefs = [
+      { label: '1. SAVED ON DEVICE', x: -6.6, color: 0xf59e0b, hex: '#f59e0b' },
+      { label: '2. RECEIVED', x: -2.2, color: 0x00f0ff, hex: '#00f0ff' },
+      { label: '3. ACK', x: 2.2, color: 0xa855f7, hex: '#a855f7' },
+      { label: '4. DISPATCHED', x: 6.6, color: 0x10b981, hex: '#10b981' }
+    ];
+
+    const stateNodes = [];
+    stateNodeDefs.forEach((def, idx) => {
+      const nGroup = new THREE.Group();
+      nGroup.position.set(def.x, 0, 0);
+
+      const sphere = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.95, 1),
+        new THREE.MeshStandardMaterial({
+          color: def.color,
+          emissive: def.color,
+          emissiveIntensity: 1.1,
+          wireframe: true
+        })
+      );
+      nGroup.add(sphere);
+
+      const innerCore = new THREE.Mesh(
+        new THREE.SphereGeometry(0.48, 16, 16),
+        new THREE.MeshBasicMaterial({ color: def.color })
+      );
+      nGroup.add(innerCore);
+
+      const sprite = createLabelSprite(def.label, {
+        border: def.hex,
+        color: '#ffffff',
+        scale: [3.7, 0.9]
+      });
+      sprite.position.set(0, -1.85, 0);
+      nGroup.add(sprite);
+
+      honestyStage.add(nGroup);
+      stateNodes.push({ group: nGroup, sphere, innerCore, idx });
+    });
+
+    // Encrypted Local Outbox Vault Cube around Node 1
+    const vaultCubeGeo = new THREE.BoxGeometry(2.85, 2.85, 2.85);
+    const vaultCube = new THREE.Mesh(
+      vaultCubeGeo,
+      new THREE.MeshStandardMaterial({
+        color: 0xf59e0b,
+        emissive: 0xd97706,
+        emissiveIntensity: 0.65,
+        transparent: true,
+        opacity: 0.25
+      })
+    );
+    vaultCube.position.set(-6.6, 0, 0);
+    vaultCube.add(
+      new THREE.LineSegments(
+        new THREE.EdgesGeometry(vaultCubeGeo),
+        new THREE.LineBasicMaterial({ color: 0xfbbf24 })
+      )
+    );
+    honestyStage.add(vaultCube);
+
+    const vaultStatusLabel = createLabelSprite('OFFLINE VAULT LOCKED // IDEMPOTENT', {
+      border: '#fbbf24',
+      color: '#fde68a',
+      scale: [5.4, 1.05]
+    });
+    vaultStatusLabel.position.set(-6.6, 2.5, 0);
+    honestyStage.add(vaultStatusLabel);
+
+    // Connecting Bridges between the 4 State Nodes
+    const honestyBridges = [];
+    for (let i = 0; i < 3; i++) {
+      const x1 = stateNodeDefs[i].x + 1.05;
+      const x2 = stateNodeDefs[i + 1].x - 1.05;
+      const bGeo = new THREE.CylinderGeometry(0.08, 0.08, x2 - x1, 12);
+      bGeo.rotateZ(Math.PI / 2);
+      const bMat = new THREE.MeshStandardMaterial({
+        color: 0x00f0ff,
+        emissive: 0x00f0ff,
+        emissiveIntensity: 1.2,
+        transparent: true,
+        opacity: 0.85
+      });
+      const bridge = new THREE.Mesh(bGeo, bMat);
+      bridge.position.set((x1 + x2) / 2, 0, 0);
+      honestyStage.add(bridge);
+      honestyBridges.push(bridge);
+    }
+
+    /* --------------------------------------------------------------------------
+       STAGE E ([-45, 0, 0]): NVIDIA NEMOTRON BEYOND A CHATBOT (Slide 6)
+       3D Audio Waveform -> Green Neural Core -> 3 Geometric Laser Tool Beams
+       -------------------------------------------------------------------------- */
+    const nvidiaStage = new THREE.Group();
+    nvidiaStage.position.set(-45, 0, 0);
+    scene.add(nvidiaStage);
+
+    // 3D Audio Waveform Bars on Left
+    const waveBars = [];
+    const barGeo = new THREE.BoxGeometry(0.18, 1, 0.18);
+    for (let i = 0; i < 24; i++) {
+      const barMat = new THREE.MeshStandardMaterial({
+        color: 0x76b900,
+        emissive: 0x76b900,
+        emissiveIntensity: 1.1
+      });
+      const bar = new THREE.Mesh(barGeo, barMat);
+      bar.position.set(-8.2 + i * 0.28, 0, 0);
+      nvidiaStage.add(bar);
+      waveBars.push(bar);
+    }
+
+    const rivaLabel = createLabelSprite('NVIDIA RIVA ASR STREAM', {
+      border: '#76b900',
+      color: '#bef264',
+      scale: [4.2, 0.95]
+    });
+    rivaLabel.position.set(-5.0, 2.5, 0);
+    nvidiaStage.add(rivaLabel);
+
+    // Glowing Green NVIDIA Nemotron Neural Core
+    const nemotronCore = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(1.75, 1),
+      new THREE.MeshStandardMaterial({
+        color: 0x76b900,
+        emissive: 0x76b900,
+        emissiveIntensity: 1.6,
+        wireframe: true
+      })
+    );
+    nemotronCore.position.set(-0.5, 0, 0);
+    nvidiaStage.add(nemotronCore);
+
+    const nemotronInner = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(1.05, 0),
+      new THREE.MeshStandardMaterial({
+        color: 0xd9f99d,
+        emissive: 0x76b900,
+        emissiveIntensity: 1.2
+      })
+    );
+    nemotronCore.add(nemotronInner);
+
+    // 3 Structured Geometric Laser Beams & Tool Nodes
+    const toolDefs = [
+      { name: 'draft_request()', y: 3.1, color: 0x76b900, hex: '#76b900' },
+      { name: 'reserve_stock()', y: 0.0, color: 0x00f0ff, hex: '#00f0ff' },
+      { name: 'send_referral()', y: -3.1, color: 0x10b981, hex: '#10b981' }
+    ];
+    const toolPackets = [];
+
+    toolDefs.forEach((td) => {
+      const start = new THREE.Vector3(-0.5, 0, 0);
+      const end = new THREE.Vector3(6.2, td.y, 0);
+      const dir = new THREE.Vector3().subVectors(end, start);
+      const len = dir.length();
+
+      const beamGeo = new THREE.CylinderGeometry(0.07, 0.07, len, 12);
+      beamGeo.rotateZ(-Math.PI / 2);
+      const beamMat = new THREE.MeshStandardMaterial({
+        color: td.color,
+        emissive: td.color,
+        emissiveIntensity: 1.8
+      });
+      const beam = new THREE.Mesh(beamGeo, beamMat);
+      beam.position.copy(start).addScaledVector(dir, 0.5);
+      beam.lookAt(end);
+      beam.rotateY(Math.PI / 2);
+      nvidiaStage.add(beam);
+
+      // Target Geometric Node
+      const targetNode = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.68, 0),
+        new THREE.MeshStandardMaterial({
+          color: td.color,
+          emissive: td.color,
+          emissiveIntensity: 1.4,
+          wireframe: true
+        })
+      );
+      targetNode.position.copy(end);
+      nvidiaStage.add(targetNode);
+
+      const lbl = createLabelSprite(td.name, {
+        border: td.hex,
+        color: '#ffffff',
+        scale: [3.9, 0.92]
+      });
+      lbl.position.set(end.x + 2.6, end.y, 0);
+      nvidiaStage.add(lbl);
+
+      // Traveling Data Packet along Laser Beam
+      const pkt = new THREE.Mesh(
+        new THREE.BoxGeometry(0.32, 0.32, 0.32),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+      nvidiaStage.add(pkt);
+      toolPackets.push({ mesh: pkt, start, end, t: Math.random() });
+    });
+
+    /* --------------------------------------------------------------------------
+       STAGE F ([-45, -28, 0]): SPACETIMEDB REACTIVE ENGINE (Slide 7)
+       Central Cyan Hypercube + South Hall Node (6 Water Cubes -> 2 Cubes)
+       -------------------------------------------------------------------------- */
+    const spacetimeStage = new THREE.Group();
+    spacetimeStage.position.set(-45, -28, 0);
+    scene.add(spacetimeStage);
+
+    // Central Cyan Hypercube (Outer + Inner + Struts)
+    const hypercubeGroup = new THREE.Group();
+    spacetimeStage.add(hypercubeGroup);
+
+    const outerCubeGeo = new THREE.BoxGeometry(3.0, 3.0, 3.0);
+    const outerCube = new THREE.LineSegments(
+      new THREE.EdgesGeometry(outerCubeGeo),
+      new THREE.LineBasicMaterial({ color: 0x00f0ff })
+    );
+    hypercubeGroup.add(outerCube);
+
+    const innerCubeGeo = new THREE.BoxGeometry(1.55, 1.55, 1.55);
+    const innerCube = new THREE.Mesh(
+      innerCubeGeo,
+      new THREE.MeshStandardMaterial({
+        color: 0x00f0ff,
+        emissive: 0x00f0ff,
+        emissiveIntensity: 1.4,
+        transparent: true,
+        opacity: 0.55
+      })
+    );
+    hypercubeGroup.add(innerCube);
+
+    const stLabel = createLabelSprite('SPACETIMEDB // ATOMIC REDUCERS', {
+      border: '#00f0ff',
+      color: '#67e8f9',
+      scale: [5.2, 1.05]
+    });
+    stLabel.position.set(0, 2.9, 0);
+    spacetimeStage.add(stLabel);
+
+    // South Hall Node containing 6 Water Cubes (4 drop to 2 on atomic transaction)
+    const southHallGroup = new THREE.Group();
+    southHallGroup.position.set(5.8, 0.4, 0);
+    spacetimeStage.add(southHallGroup);
+
+    const southFrame = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(3.4, 2.6, 2.2)),
+      new THREE.LineBasicMaterial({ color: 0x38bdf8 })
+    );
+    southHallGroup.add(southFrame);
+
+    const southHallLabel = createLabelSprite('SOUTH HALL STOCK: 6 → 2', {
+      border: '#00f0ff',
+      color: '#ffffff',
+      scale: [4.3, 0.95]
+    });
+    southHallLabel.position.set(0, 2.1, 0);
+    southHallGroup.add(southHallLabel);
+
+    const waterCubes = [];
+    for (let i = 0; i < 6; i++) {
+      const col = i % 3;
+      const row = Math.floor(i / 3);
+      const wMat = new THREE.MeshStandardMaterial({
+        color: 0x00f0ff,
+        emissive: 0x00f0ff,
+        emissiveIntensity: 1.5,
+        transparent: true,
+        opacity: 0.95
+      });
+      const wCube = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.68, 0.68), wMat);
+      wCube.position.set((col - 1) * 0.95, (row - 0.5) * 0.95, 0);
+      southHallGroup.add(wCube);
+      waterCubes.push(wCube);
+    }
+
+    // Transaction Beam hitting South Hall
+    const txBeamGeo = new THREE.CylinderGeometry(0.09, 0.09, 4.2, 12);
+    txBeamGeo.rotateZ(Math.PI / 2);
+    const txBeamMat = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff,
+      transparent: true,
+      opacity: 0.9
+    });
+    const txBeam = new THREE.Mesh(txBeamGeo, txBeamMat);
+    txBeam.position.set(2.8, 0.2, 0);
+    spacetimeStage.add(txBeam);
+
+    // Orbiting Client Phones pulsing in real-time
+    const orbitingPhones = [];
+    for (let i = 0; i < 4; i++) {
+      const pMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.75, 1.35, 0.12),
+        new THREE.MeshStandardMaterial({
+          color: 0x10b981,
+          emissive: 0x00f0ff,
+          emissiveIntensity: 1.0
+        })
+      );
+      spacetimeStage.add(pMesh);
+      orbitingPhones.push({ mesh: pMesh, angle: (i * Math.PI) / 2 });
+    }
+
+    /* --------------------------------------------------------------------------
+       STAGE G ([0, 34, 0]): SLIDE 8 TACTICAL HOLOGRID OF HACKUTD VENUE
+       Responds live to the 4-Step Interactive Demo Controller
+       -------------------------------------------------------------------------- */
+    const demoStage = new THREE.Group();
+    demoStage.position.set(0, 34, 0);
+    scene.add(demoStage);
+
+    const holoDisk = new THREE.Mesh(
+      new THREE.RingGeometry(1.5, 8.2, 48, 4),
+      new THREE.MeshBasicMaterial({
+        color: 0x00f0ff,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.32
+      })
+    );
+    holoDisk.rotation.x = -Math.PI / 2;
+    demoStage.add(holoDisk);
+
+    // North Hall & South Hall Hologram Structures
+    const northHolo = new THREE.Mesh(
+      new THREE.BoxGeometry(2.6, 1.8, 2.2),
+      new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        emissive: 0x00f0ff,
+        emissiveIntensity: 0.5,
+        wireframe: true
+      })
+    );
+    northHolo.position.set(-3.2, 0.9, -1.2);
+    demoStage.add(northHolo);
+
+    const southHolo = new THREE.Mesh(
+      new THREE.BoxGeometry(2.8, 2.1, 2.2),
+      new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        emissive: 0x10b981,
+        emissiveIntensity: 0.5,
+        wireframe: true
+      })
+    );
+    southHolo.position.set(3.4, 1.05, 1.2);
+    demoStage.add(southHolo);
+
+    // Step 1 Highlight: GPS Pin + Accuracy Ring
+    const demoStep1Group = new THREE.Group();
+    const gpsPinMesh = new THREE.Mesh(
+      new THREE.ConeGeometry(0.55, 1.6, 16),
+      new THREE.MeshStandardMaterial({ color: 0x00f0ff, emissive: 0x00f0ff, emissiveIntensity: 2.0 })
+    );
+    gpsPinMesh.rotation.x = Math.PI;
+    gpsPinMesh.position.set(-3.2, 2.9, -1.2);
+    demoStep1Group.add(gpsPinMesh);
+
+    const gpsAccRing = new THREE.Mesh(
+      new THREE.RingGeometry(1.2, 1.45, 32),
+      new THREE.MeshBasicMaterial({ color: 0x00f0ff, side: THREE.DoubleSide })
+    );
+    gpsAccRing.rotation.x = -Math.PI / 2;
+    gpsAccRing.position.set(-3.2, 0.1, -1.2);
+    demoStep1Group.add(gpsAccRing);
+    demoStage.add(demoStep1Group);
+
+    // Step 2 Highlight: Nemotron Tool Trace Arcs
+    const demoStep2Group = new THREE.Group();
+    demoStep2Group.visible = false;
+    const curve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(-3.2, 2.0, -1.2),
+      new THREE.Vector3(0, 5.6, 0),
+      new THREE.Vector3(3.4, 2.1, 1.2)
+    );
+    const arcGeo = new THREE.TubeGeometry(curve, 32, 0.1, 8, false);
+    const arcMesh = new THREE.Mesh(
+      arcGeo,
+      new THREE.MeshStandardMaterial({ color: 0x76b900, emissive: 0x76b900, emissiveIntensity: 2.0 })
+    );
+    demoStep2Group.add(arcMesh);
+    const dagLabel = createLabelSprite('NEMOTRON TRACE: run_what_if(transfer=4)', {
+      border: '#76b900',
+      color: '#bef264',
+      scale: [5.5, 1.05]
+    });
+    dagLabel.position.set(0, 5.5, 0);
+    demoStep2Group.add(dagLabel);
+    demoStage.add(demoStep2Group);
+
+    // Step 3 Highlight: South Hall 6 -> 2 Cubes
+    const demoStep3Group = new THREE.Group();
+    demoStep3Group.visible = false;
+    const demoCubes = [];
+    for (let i = 0; i < 6; i++) {
+      const cMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.48, 0.48, 0.48),
+        new THREE.MeshStandardMaterial({ color: 0x00f0ff, emissive: 0x00f0ff, emissiveIntensity: 1.8 })
+      );
+      cMesh.position.set(2.6 + (i % 3) * 0.75, 2.8 + Math.floor(i / 3) * 0.75, 1.2);
+      demoStep3Group.add(cMesh);
+      demoCubes.push(cMesh);
+    }
+    demoStage.add(demoStep3Group);
+
+    // Step 4 Highlight: Synthetic Sandbox ACK & WebRTC Ringing Waves
+    const demoStep4Group = new THREE.Group();
+    demoStep4Group.visible = false;
+    const webrtcRings = [];
+    for (let i = 0; i < 3; i++) {
+      const rMesh = new THREE.Mesh(
+        new THREE.RingGeometry(1.0 + i * 1.4, 1.18 + i * 1.4, 40),
+        new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+      );
+      rMesh.rotation.x = -Math.PI / 2;
+      rMesh.position.set(0, 0.25 + i * 0.2, 0);
+      demoStep4Group.add(rMesh);
+      webrtcRings.push(rMesh);
+    }
+    const ackLabel = createLabelSprite('SANDBOX ACK // WEBRTC FOLLOW-UP RINGING', {
+      border: '#10b981',
+      color: '#6ee7b7',
+      scale: [5.6, 1.05]
+    });
+    ackLabel.position.set(0, 4.4, 0);
+    demoStep4Group.add(ackLabel);
+    demoStage.add(demoStep4Group);
+
+    /* --------------------------------------------------------------------------
+       STAGE H ([0, -28, 0]): SYNTHETIC SANDBOX & SAFETY BOUNDARY (Slide 9)
+       3D Firewall Matrix + Signed Webhook Packets + Orbiting Guardian Satellite
+       -------------------------------------------------------------------------- */
+    const sandboxStage = new THREE.Group();
+    sandboxStage.position.set(0, -28, 0);
+    scene.add(sandboxStage);
+
+    // 3D Security Firewall Matrix Plane
+    const firewallGroup = new THREE.Group();
+    sandboxStage.add(firewallGroup);
+
+    const hexGeo = new THREE.CylinderGeometry(0.65, 0.65, 0.12, 6);
+    hexGeo.rotateZ(Math.PI / 2);
+    for (let r = -2; r <= 2; r++) {
+      for (let c = -2; c <= 2; c++) {
+        const hMesh = new THREE.Mesh(
+          hexGeo,
+          new THREE.MeshStandardMaterial({
+            color: 0x00f0ff,
+            emissive: 0x0284c7,
+            emissiveIntensity: 0.85,
+            transparent: true,
+            opacity: 0.35
+          })
+        );
+        hMesh.position.set(0, r * 1.25 + (c % 2) * 0.6, c * 1.25);
+        firewallGroup.add(hMesh);
+      }
+    }
+
+    // Left AI Agent Node
+    const aiAgentNode = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(1.25, 1),
+      new THREE.MeshStandardMaterial({ color: 0x76b900, emissive: 0x76b900, emissiveIntensity: 1.3, wireframe: true })
+    );
+    aiAgentNode.position.set(-5.2, 0, 0);
+    sandboxStage.add(aiAgentNode);
+
+    // Right Synthetic Responder Sandbox Badge
+    const responderBadge = new THREE.Mesh(
+      new THREE.OctahedronGeometry(1.45, 0),
+      new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 1.4, wireframe: true })
+    );
+    responderBadge.position.set(5.2, 0, 0);
+    sandboxStage.add(responderBadge);
+
+    const sandboxBadgeLabel = createLabelSprite('SYNTHETIC RESPONDER SANDBOX', {
+      border: '#10b981',
+      color: '#6ee7b7',
+      scale: [5.0, 1.0]
+    });
+    sandboxBadgeLabel.position.set(5.2, -2.4, 0);
+    sandboxStage.add(sandboxBadgeLabel);
+
+    // Looping Guardian Satellite (Autonomous Follow-Up Timer)
+    const satelliteGroup = new THREE.Group();
+    const satBody = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.55, 0),
+      new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xf59e0b, emissiveIntensity: 1.8 })
+    );
+    satelliteGroup.add(satBody);
+    sandboxStage.add(satelliteGroup);
+
+    const satOrbitRing = new THREE.Mesh(
+      new THREE.TorusGeometry(6.8, 0.04, 12, 80),
+      new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.5 })
+    );
+    satOrbitRing.rotation.x = Math.PI / 2.3;
+    sandboxStage.add(satOrbitRing);
+
+    /* ==========================================================================
+       6. SLIDE NAVIGATION, GSAP TRANSITIONS & LIVE DEMO CONTROLS
+       ========================================================================== */
+    let currentSlideIndex = 0;
+    let speakerHudVisible = true;
+    let iframeDrawerOpen = false;
+    let liveAppUrl = 'http://localhost:5173';
+    let liveQrUrl = 'http://localhost:5173/join/hackutd-volunteer';
+
+    // DOM Elements
+    const elSceneTelemetry = document.getElementById('scene-telemetry-label');
+    const elSlideDots = document.getElementById('slide-dots');
+    const elActiveSpeakerPill = document.getElementById('active-speaker-pill');
+    const elSlideCounterCurrent = document.getElementById('slide-counter-current');
+    const elSlideBadges = document.getElementById('slide-badges');
+    const elSlideKicker = document.getElementById('slide-kicker');
+    const elSlideHeadline = document.getElementById('slide-headline');
+    const elSlideSubtitle = document.getElementById('slide-subtitle');
+    const elSlide3dCaption = document.getElementById('slide-3d-caption');
+    const elSlide8Control = document.getElementById('slide8-mission-control');
+    const elSlide8IframeDrawer = document.getElementById('slide8-iframe-drawer');
+    const elSlide10QaGrid = document.getElementById('slide10-qa-grid');
+    const elFooterSlide8Shortcuts = document.getElementById('footer-slide8-shortcuts');
+
+    const elSpeakerHud = document.getElementById('speaker-hud');
+    const elHudSpeakerTag = document.getElementById('hud-speaker-tag');
+    const elHudTimingTag = document.getElementById('hud-timing-tag');
+    const elHudScriptText = document.getElementById('hud-script-text');
+    const elHudStageCue = document.getElementById('hud-stage-cue');
+
+    const btnPrev = document.getElementById('btn-prev-slide');
+    const btnNext = document.getElementById('btn-next-slide');
+
+    // Build top progress dots
+    SLIDES.forEach((s, idx) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'h-2 rounded-full transition-all duration-300 bg-white/20 hover:bg-white/50 w-5';
+      btn.title = `Slide ${s.id}: ${s.headline}`;
+      btn.addEventListener('click', () => goToSlide(idx));
+      elSlideDots.appendChild(btn);
+    });
+
+    function getBadgeClass(name) {
+      if (name === 'State Farm') return 'badge-statefarm';
+      if (name === 'NVIDIA') return 'badge-nvidia';
+      if (name === 'SpacetimeDB') return 'badge-spacetime';
+      return 'badge-design';
+    }
+
+    function goToSlide(index) {
+      if (index < 0 || index >= SLIDES.length) return;
+      currentSlideIndex = index;
+      const slide = SLIDES[index];
+
+      // Update Header & Progress Dots
+      elSceneTelemetry.textContent = slide.telemetry;
+      elActiveSpeakerPill.textContent = slide.speakerShort;
+      elSlideCounterCurrent.textContent = String(slide.id).padStart(2, '0');
+
+      Array.from(elSlideDots.children).forEach((dot, i) => {
+        if (i === index) {
+          dot.className = 'h-2 rounded-full transition-all duration-300 bg-cyan-400 shadow-[0_0_12px_#00f0ff] w-8';
+        } else if (i < index) {
+          dot.className = 'h-2 rounded-full transition-all duration-300 bg-cyan-400/45 w-4';
+        } else {
+          dot.className = 'h-2 rounded-full transition-all duration-300 bg-white/20 hover:bg-white/40 w-4';
+        }
+      });
+
+      // Animate Typography Reveal with GSAP
+      gsap.fromTo(
+        [elSlideBadges, elSlideKicker, elSlideHeadline, elSlideSubtitle, elSlide3dCaption],
+        { y: 18, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.55, stagger: 0.06, ease: 'power3.out' }
+      );
+
+      // Populate Track Badges
+      elSlideBadges.innerHTML = slide.badges
+        .map(
+          (b) =>
+            `<span class="px-2.5 py-1 rounded-full font-mono text-[11px] font-semibold tracking-wide ${getBadgeClass(b)}">${b}</span>`
+        )
+        .join('');
+
+      elSlideKicker.textContent = slide.kicker;
+      elSlideHeadline.textContent = slide.headline;
+      elSlideSubtitle.textContent = slide.subtitle;
+      elSlide3dCaption.textContent = slide.caption3d;
+
+      // Toggle Slide 8 & Slide 10 specialized panels
+      if (slide.id === 8) {
+        elSlide8Control.classList.remove('hidden');
+        elFooterSlide8Shortcuts.classList.remove('hidden');
+      } else {
+        elSlide8Control.classList.add('hidden');
+        elFooterSlide8Shortcuts.classList.add('hidden');
+        setIframeDrawer(false);
+      }
+
+      if (slide.id === 10) {
+        elSlide10QaGrid.classList.remove('hidden');
+      } else {
+        elSlide10QaGrid.classList.add('hidden');
+      }
+
+      // Update Speaker HUD
+      elHudSpeakerTag.textContent = slide.speaker.toUpperCase();
+      elHudTimingTag.textContent = slide.timing;
+      elHudScriptText.textContent = slide.script;
+      elHudStageCue.textContent = slide.cue;
+
+      // Update Navigation Button States
+      btnPrev.disabled = index === 0;
+      btnNext.innerHTML = index === SLIDES.length - 1 ? '<span>Restart Deck ↺</span>' : '<span>Next Slide →</span>';
+
+      // Trigger City Mode Morphs for Slides 1, 2, 10
+      if (slide.id === 1) transitionCityMode('calm');
+      if (slide.id === 2) transitionCityMode('disaster');
+      if (slide.id === 10) transitionCityMode('healed');
+
+      // Smooth GSAP 3D Camera Flight & Bloom Transition
+      gsap.to(camera.position, {
+        x: slide.camera.pos[0],
+        y: slide.camera.pos[1],
+        z: slide.camera.pos[2],
+        duration: 1.5,
+        ease: 'power3.inOut'
+      });
+
+      gsap.to(cameraLookTarget, {
+        x: slide.camera.lookAt[0],
+        y: slide.camera.lookAt[1],
+        z: slide.camera.lookAt[2],
+        duration: 1.5,
+        ease: 'power3.inOut'
+      });
+
+      gsap.to(bloomPass, {
+        strength: slide.bloom.strength,
+        radius: slide.bloom.radius,
+        threshold: slide.bloom.threshold,
+        duration: 1.2
+      });
+    }
+
+    /* ==========================================================================
+       7. SLIDE 8 INTERACTIVE MISSION CONTROL LOGIC (STEPS 1-4, QR, IFRAME, URL)
+       ========================================================================== */
+    const demoStepButtons = document.querySelectorAll('.demo-step-btn');
+    const elDemoTelemetryText = document.getElementById('demo-telemetry-text');
+
+    const DEMO_STEP_MESSAGES = {
+      1: '[STEP 1] Resident Phone A: One-Shot GPS locked (32.9857° N, 96.7501° W ±6m)',
+      2: '[STEP 2] NVIDIA Nemotron: list_stalled_requests → run_what_if(transfer=4) GROUNDED',
+      3: '[STEP 3] SpacetimeDB Atomic Reducer: South Hall Water 6 → 2 (WebSocket diff <18ms)',
+      4: '[STEP 4] Synthetic Responder Sandbox: Signed Webhook ACK + WebRTC Ringing Active'
+    };
+
+    function activateDemoStep(stepNumber) {
+      demoStepButtons.forEach((btn) => {
+        const s = Number(btn.dataset.demoStep);
+        if (s === stepNumber) {
+          btn.className = 'demo-step-btn text-left p-2.5 rounded-xl bg-cyan-500/20 border border-cyan-400 shadow-[0_0_20px_rgba(0,240,255,0.2)] transition-all';
+        } else {
+          btn.className = 'demo-step-btn text-left p-2.5 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/25 transition-all';
+        }
+      });
+
+      elDemoTelemetryText.textContent = DEMO_STEP_MESSAGES[stepNumber];
+
+      demoStep1Group.visible = stepNumber === 1;
+      demoStep2Group.visible = stepNumber === 2;
+      demoStep3Group.visible = stepNumber === 3;
+      demoStep4Group.visible = stepNumber === 4;
+
+      // Animate 6 -> 2 cube drop when Step 3 is clicked
+      if (stepNumber === 3) {
+        demoCubes.forEach((c, idx) => {
+          c.scale.set(1, 1, 1);
+          c.material.opacity = 1;
+          if (idx >= 2) {
+            gsap.to(c.scale, { x: 0.2, y: 0.2, z: 0.2, duration: 0.85, delay: 0.25, ease: 'back.in(2)' });
+          }
+        });
+      }
+    }
+
+    demoStepButtons.forEach((btn) => {
+      btn.addEventListener('click', () => activateDemoStep(Number(btn.dataset.demoStep)));
+    });
+
+    // Toggle Split-Screen Live App Iframe Drawer
+    const elLiveIframe = document.getElementById('live-app-iframe');
+    const elIframeBtnLabel = document.getElementById('iframe-btn-label');
+
+    function setIframeDrawer(open) {
+      iframeDrawerOpen = open;
+      if (open) {
+        elSlide8IframeDrawer.classList.remove('hidden');
+        elSlide8IframeDrawer.classList.add('flex');
+        elIframeBtnLabel.textContent = 'Hide Live App Drawer';
+        if (elLiveIframe.src === 'about:blank' || elLiveIframe.src !== liveAppUrl) {
+          elLiveIframe.src = liveAppUrl;
+        }
+      } else {
+        elSlide8IframeDrawer.classList.add('hidden');
+        elSlide8IframeDrawer.classList.remove('flex');
+        elIframeBtnLabel.textContent = 'Open Live App Drawer';
+      }
+    }
+
+    document.getElementById('btn-toggle-iframe').addEventListener('click', () => {
+      setIframeDrawer(!iframeDrawerOpen);
+    });
+    document.getElementById('btn-close-iframe').addEventListener('click', () => {
+      setIframeDrawer(false);
+    });
+    document.getElementById('btn-reload-iframe').addEventListener('click', () => {
+      elLiveIframe.src = liveAppUrl;
+    });
+
+    // QR Code Modal ('Q') & URL Customization Modal ('D')
+    const qrModal = document.getElementById('qr-modal');
+    const urlConfigModal = document.getElementById('url-config-modal');
+    const qrCanvas = document.getElementById('qr-canvas');
+    const inputAppUrl = document.getElementById('input-app-url');
+    const inputQrUrl = document.getElementById('input-qr-url');
+
+    function syncUrlDisplay() {
+      document.getElementById('demo-url-indicator').textContent = liveAppUrl;
+      document.getElementById('iframe-header-url').textContent = liveAppUrl;
+      document.getElementById('link-external-app').href = liveAppUrl;
+      document.getElementById('qr-target-url-text').textContent = liveQrUrl;
+      renderQRCodeToCanvas(qrCanvas, liveQrUrl);
+    }
+
+    function openQrModal() {
+      syncUrlDisplay();
+      if (!qrModal.open) qrModal.showModal();
+    }
+
+    function openUrlConfigModal() {
+      inputAppUrl.value = liveAppUrl;
+      inputQrUrl.value = liveQrUrl;
+      if (qrModal.open) qrModal.close();
+      if (!urlConfigModal.open) urlConfigModal.showModal();
+    }
+
+    document.getElementById('btn-open-qr').addEventListener('click', openQrModal);
+    document.getElementById('btn-config-url').addEventListener('click', openUrlConfigModal);
+    document.getElementById('btn-qr-edit-url').addEventListener('click', openUrlConfigModal);
+
+    document.getElementById('btn-reset-urls').addEventListener('click', () => {
+      inputAppUrl.value = 'http://localhost:5173';
+      inputQrUrl.value = 'http://localhost:5173/join/hackutd-volunteer';
+    });
+
+    document.getElementById('url-config-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      liveAppUrl = inputAppUrl.value.trim() || 'http://localhost:5173';
+      liveQrUrl = inputQrUrl.value.trim() || liveAppUrl;
+      syncUrlDisplay();
+      if (iframeDrawerOpen) {
+        elLiveIframe.src = liveAppUrl;
+      }
+      urlConfigModal.close();
+    });
+
+    /* ==========================================================================
+       8. SPEAKER HUD & KEYBOARD / BUTTON NAVIGATION
+       ========================================================================== */
+    function toggleSpeakerHud() {
+      speakerHudVisible = !speakerHudVisible;
+      if (speakerHudVisible) {
+        elSpeakerHud.classList.remove('opacity-0', 'translate-y-6', 'pointer-events-none');
+      } else {
+        elSpeakerHud.classList.add('opacity-0', 'translate-y-6', 'pointer-events-none');
+      }
+    }
+
+    document.getElementById('btn-speaker-hud').addEventListener('click', toggleSpeakerHud);
+
+    btnPrev.addEventListener('click', () => goToSlide(currentSlideIndex - 1));
+    btnNext.addEventListener('click', () => {
+      if (currentSlideIndex === SLIDES.length - 1) {
+        goToSlide(0);
+      } else {
+        goToSlide(currentSlideIndex + 1);
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      // Ignore shortcuts while typing in an input or when a modal handles Esc
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        if (qrModal.open || urlConfigModal.open) return;
+        e.preventDefault();
+        goToSlide(Math.min(SLIDES.length - 1, currentSlideIndex + 1));
+      } else if (e.key === 'ArrowLeft') {
+        if (qrModal.open || urlConfigModal.open) return;
+        e.preventDefault();
+        goToSlide(Math.max(0, currentSlideIndex - 1));
+      } else if (e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        toggleSpeakerHud();
+      } else if (e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        openUrlConfigModal();
+      } else if (e.key.toLowerCase() === 'q') {
+        e.preventDefault();
+        if (qrModal.open) qrModal.close();
+        else openQrModal();
+      } else if (e.key.toLowerCase() === 'i' && SLIDES[currentSlideIndex].id === 8) {
+        e.preventDefault();
+        setIframeDrawer(!iframeDrawerOpen);
+      } else if (e.key >= '1' && e.key <= '9') {
+        if (qrModal.open || urlConfigModal.open) return;
+        goToSlide(Number(e.key) - 1);
+      } else if (e.key === '0') {
+        if (qrModal.open || urlConfigModal.open) return;
+        goToSlide(9);
+      }
+    });
+
+    /* ==========================================================================
+       9. 60 FPS ANIMATION LOOP FOR ALL 10 PROCEDURAL 3D STAGES
+       ========================================================================== */
+    const clock = new THREE.Clock();
+    const colorCyan = new THREE.Color(0x00f0ff);
+    const colorRed = new THREE.Color(0xff2a4b);
+    const colorAmber = new THREE.Color(0xf59e0b);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+
+      // Subtle ambient dust rotation
+      ambientDust.rotation.y = t * 0.02;
+
+      // 1. CITY STAGE (Slides 1, 2, 10)
+      cityStage.rotation.y = t * 0.11;
+      const f = cityState.fractureFactor;
+
+      cityBuildings.forEach((b, idx) => {
+        const jitter = f > 0.01 ? Math.sin(t * 14 + idx) * 0.03 * f : 0;
+        b.mesh.rotation.x = b.fractureRotX * f + jitter;
+        b.mesh.rotation.z = b.fractureRotZ * f + jitter;
+        b.mesh.position.y = b.baseY + b.fractureOffsetY * f;
+      });
+
+      // Animate street data pulses
+      const spArr = streetPulseGeo.attributes.position.array;
+      for (let i = 0; i < streetPulseCount; i++) {
+        const vel = streetPulseVel[i];
+        if (vel.alongX) {
+          spArr[i * 3] += vel.speed;
+          if (spArr[i * 3] > 11) spArr[i * 3] = -11;
+          if (spArr[i * 3] < -11) spArr[i * 3] = 11;
+        } else {
+          spArr[i * 3 + 2] += vel.speed;
+          if (spArr[i * 3 + 2] > 11) spArr[i * 3 + 2] = -11;
+          if (spArr[i * 3 + 2] < -11) spArr[i * 3 + 2] = 11;
+        }
+      }
+      streetPulseGeo.attributes.position.needsUpdate = true;
+
+      // Animate distress / healed beacons
+      distressBeacons.forEach((d) => {
+        if (d.beacon.visible) {
+          d.beacon.rotation.y = t * 2.4 + d.phase;
+          d.beacon.position.y = d.baseY + Math.sin(t * 4 + d.phase) * 0.25;
+        }
+      });
+
+      if (constellationGroup.visible) {
+        crownRing.rotation.z = t * 0.4;
+      }
+
+      // 2. 911 CHOKE STAGE (Slide 3)
+      chokeRing.rotation.z = t * 1.2;
+      chokeCore.rotation.x = t * 1.5;
+      chokeCore.rotation.y = t * 1.1;
+
+      const tpPos = trajGeo.attributes.position.array;
+      const tpCol = trajGeo.attributes.color.array;
+      for (let i = 0; i < trajCount; i++) {
+        const m = trajMeta[i];
+        m.t += m.speed;
+        if (m.t > 1) m.t = 0;
+
+        if (m.t < 0.72) {
+          // Converging upward toward the 911 choke ring
+          const p = m.t / 0.72;
+          const r = m.radius * (1 - p * 0.82);
+          tpPos[i * 3] = Math.cos(m.angle + p * 2.0) * r;
+          tpPos[i * 3 + 1] = -6.0 + p * 8.2;
+          tpPos[i * 3 + 2] = Math.sin(m.angle + p * 2.0) * r;
+          tpCol[i * 3] = colorCyan.r;
+          tpCol[i * 3 + 1] = colorCyan.g;
+          tpCol[i * 3 + 2] = colorCyan.b;
+        } else {
+          // Bottleneck collision sparks bursting outward in red/amber
+          const sp = (m.t - 0.72) / 0.28;
+          tpPos[i * 3] = m.sparkVec.x * sp;
+          tpPos[i * 3 + 1] = 2.2 + m.sparkVec.y * sp - sp * sp * 2.5;
+          tpPos[i * 3 + 2] = m.sparkVec.z * sp;
+          const c = i % 2 === 0 ? colorRed : colorAmber;
+          tpCol[i * 3] = c.r;
+          tpCol[i * 3 + 1] = c.g;
+          tpCol[i * 3 + 2] = c.b;
+        }
+      }
+      trajGeo.attributes.position.needsUpdate = true;
+      trajGeo.attributes.color.needsUpdate = true;
+
+      // 3. SCREEN ZERO SMARTPHONE STAGE (Slide 4)
+      phoneStage.rotation.y = -0.35 + Math.sin(t * 0.8) * 0.18;
+      phoneStage.rotation.x = Math.cos(t * 0.6) * 0.08;
+      call911Bar.position.z = 3.3 + Math.sin(t * 2.2) * 0.22;
+      privacyShields.forEach((s) => {
+        s.mesh.rotation.z = t * 0.8 + s.idx;
+        s.group.position.z = s.baseZ + Math.sin(t * 1.8 + s.idx) * 0.25;
+      });
+
+      // 4. RADICAL HONESTY VAULT STAGE (Slide 5)
+      vaultCube.rotation.x = t * 0.55;
+      vaultCube.rotation.y = t * 0.75;
+      const networkCutCycle = Math.sin(t * 1.1) > 0;
+      vaultCube.material.opacity = networkCutCycle ? 0.38 : 0.12;
+      honestyBridges.forEach((b, idx) => {
+        b.material.opacity = networkCutCycle && idx === 0 ? 0.12 : 0.88;
+      });
+      stateNodes.forEach((n) => {
+        n.sphere.rotation.y = t * 1.2 + n.idx;
+      });
+
+      // 5. NVIDIA NEMOTRON STAGE (Slide 6)
+      nemotronCore.rotation.x = t * 0.7;
+      nemotronCore.rotation.y = t * 0.95;
+      waveBars.forEach((bar, idx) => {
+        const s = 0.4 + Math.abs(Math.sin(t * 6.5 + idx * 0.45)) * 2.6;
+        bar.scale.y = s;
+      });
+      toolPackets.forEach((pkt) => {
+        pkt.t = (pkt.t + 0.018) % 1;
+        pkt.mesh.position.lerpVectors(pkt.start, pkt.end, pkt.t);
+        pkt.mesh.rotation.x = t * 3;
+        pkt.mesh.rotation.y = t * 3;
+      });
+
+      // 6. SPACETIMEDB HYPERCUBE STAGE (Slide 7)
+      hypercubeGroup.rotation.x = t * 0.45;
+      hypercubeGroup.rotation.y = t * 0.65;
+      innerCube.rotation.x = -t * 0.9;
+      innerCube.rotation.z = t * 0.9;
+
+      // Cycle South Hall 6 -> 2 atomic stock drop every 4 seconds
+      const dropActive = (Math.floor(t / 2.2) % 2) === 1;
+      waterCubes.forEach((cube, idx) => {
+        cube.rotation.y = t * 0.8;
+        if (idx >= 2 && dropActive) {
+          cube.scale.lerp(new THREE.Vector3(0.22, 0.22, 0.22), 0.12);
+          cube.material.opacity = 0.22;
+        } else {
+          cube.scale.lerp(new THREE.Vector3(1, 1, 1), 0.12);
+          cube.material.opacity = 0.95;
+        }
+      });
+
+      orbitingPhones.forEach((p, idx) => {
+        const a = p.angle + t * 0.75;
+        p.mesh.position.set(Math.cos(a) * 4.2, Math.sin(a * 1.3) * 1.8, Math.sin(a) * 3.2);
+        p.mesh.lookAt(spacetimeStage.position);
+      });
+
+      // 7. DEMO HOLOGRID STAGE (Slide 8)
+      demoStage.rotation.y = t * 0.18;
+      gpsPinMesh.position.y = 2.9 + Math.sin(t * 4) * 0.25;
+      const ringScale = 1 + (t % 1.5) * 0.8;
+      gpsAccRing.scale.set(ringScale, ringScale, 1);
+
+      webrtcRings.forEach((r, idx) => {
+        const s = 1 + ((t * 1.4 + idx * 0.4) % 1.8);
+        r.scale.set(s, s, 1);
+        r.material.opacity = Math.max(0.1, 1 - (s - 1) / 1.8);
+      });
+
+      // 8. SYNTHETIC SANDBOX STAGE (Slide 9)
+      aiAgentNode.rotation.y = t * 0.9;
+      responderBadge.rotation.y = -t * 0.9;
+      satelliteGroup.position.set(
+        Math.cos(t * 1.3) * 6.8,
+        Math.sin(t * 1.3) * 2.8,
+        Math.sin(t * 1.3) * 6.2
+      );
+      satelliteGroup.rotation.y = t * 2.5;
+
+      // Keep camera smoothly aimed at interpolated target
+      camera.lookAt(cameraLookTarget);
+      composer.render();
+    }
+
+    // Responsive Resize Handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Initialize Deck on Slide 1 & Pre-Render QR
+    syncUrlDisplay();
+    goToSlide(0);
+    animate();
+  </script>
+</body>
+</html>

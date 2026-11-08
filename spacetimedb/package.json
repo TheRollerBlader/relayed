@@ -1,0 +1,18 @@
+{
+  "name": "relayaid-spacetimedb",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "spacetime build",
+    "test": "node --experimental-strip-types --test src/solver.test.ts ../client/outbox.test.ts ../worker/src/guard.test.ts ../worker/src/investigate.test.ts ../services/gateway/publicHandler.test.ts && vitest run src/module.test.ts src/access.test.ts",
+    "publish:local": "spacetime publish relayaid-demo --server local --yes"
+  },
+  "dependencies": {
+    "spacetimedb": "2.14.*"
+  },
+  "devDependencies": {
+    "typescript": "~5.6.2",
+    "vitest": "^4.1.12"
+  }
+}

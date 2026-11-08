@@ -1,0 +1,36 @@
+name: relayaid
+services:
+  spacetime:
+    image: clockworklabs/spacetime:v2.14.1
+    command: start --listen-addr 0.0.0.0:3000
+    ports: ["127.0.0.1:3000:3000"]
+    volumes: [spacetime-data:/var/lib/spacetimedb]
+    restart: unless-stopped
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.5.6
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Run setup first}
+      KC_HOSTNAME: http://localhost:8080
+      KC_HEALTH_ENABLED: 'true'
+    ports: ["127.0.0.1:8080:8080"]
+    volumes: [keycloak-data:/opt/keycloak/data, ./generated/realm.json:/opt/keycloak/data/import/relayaid.json:ro, ./themes/relayaid:/opt/keycloak/themes/relayaid:ro]
+    depends_on: [mailpit]
+    restart: unless-stopped
+  mailpit:
+    image: axllent/mailpit:v1.29.2
+    ports: ["127.0.0.1:8025:8025"]
+    volumes: [mailpit-data:/data]
+    environment: {MP_DATABASE: /data/mailpit.db, MP_MAX_AGE: 24h}
+    restart: unless-stopped
+  livekit:
+    image: livekit/livekit-server:v1.9.9
+    command: --config /etc/livekit.yaml
+    volumes: [./generated/livekit.yaml:/etc/livekit.yaml:ro]
+    ports: ["127.0.0.1:7880:7880", "127.0.0.1:7881:7881", "127.0.0.1:7882:7882/udp"]
+    restart: unless-stopped
+volumes:
+  spacetime-data:
+  keycloak-data:
+  mailpit-data:

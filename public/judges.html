@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RelayAid — Judge briefing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #09090c;
+        --ink: #f5f3f5;
+        --muted: #aaa5af;
+        --faint: #7d7784;
+        --line: #29242e;
+        --panel: #111115;
+        --accent: #ed66b7;
+        --accent-ink: #260d1e;
+        --good: #d7f5c8;
+        --warn: #f3d7a1;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
+      body {
+        font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+      button, a { font: inherit; color: inherit; }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+      ::selection { background: var(--accent); color: var(--accent-ink); }
+
+      .skip {
+        position: absolute;
+        left: 16px;
+        top: -48px;
+        z-index: 20;
+        background: var(--accent);
+        color: var(--accent-ink);
+        padding: 8px 12px;
+      }
+      .skip:focus { top: 12px; }
+
+      .progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--accent);
+        z-index: 6;
+      }
+
+      .chrome, .footer {
+        position: fixed;
+        left: 0;
+        right: 0;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 36px;
+        pointer-events: none;
+      }
+      .chrome { top: 3px; }
+      .footer { bottom: 0; padding-bottom: 16px; }
+      .chrome > *, .footer > * { pointer-events: auto; }
+      .brand, .count, .hint, .keys {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .brand { color: var(--accent); }
+      .count b { color: var(--ink); font-weight: 500; }
+      .keys { display: flex; gap: 8px; }
+      .keys button {
+        min-height: 36px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--ink);
+        letter-spacing: 0.04em;
+        text-transform: none;
+        cursor: pointer;
+      }
+      .keys button[aria-pressed="true"] {
+        background: #ed66b718;
+        border-color: #ed66b766;
+        color: #f6b5dc;
+      }
+
+      .deck { height: 100%; position: relative; }
+      .slide {
+        position: absolute;
+        inset: 0;
+        padding: 92px 64px 78px;
+        display: grid;
+        align-content: center;
+        opacity: 0;
+        visibility: hidden;
+      }
+      .slide.is-on { opacity: 1; visibility: visible; }
+      .script { display: none; }
+
+      .kicker {
+        margin: 0 0 14px;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      h1, h2 {
+        margin: 0;
+        font-weight: 500;
+        letter-spacing: -0.045em;
+        line-height: 1.02;
+      }
+      h1 { font-size: clamp(56px, 7vw, 92px); max-width: 14ch; }
+      h2 { font-size: clamp(36px, 4.4vw, 58px); max-width: 18ch; }
+      .lede {
+        margin: 18px 0 0;
+        max-width: 38ch;
+        color: var(--muted);
+        font-size: clamp(18px, 2vw, 24px);
+        line-height: 1.35;
+      }
+      .fine {
+        margin: 18px 0 0;
+        color: var(--faint);
+        font-size: 14px;
+        line-height: 1.45;
+        max-width: 78ch;
+      }
+
+      .title {
+        background:
+          radial-gradient(ellipse at 78% 46%, rgba(237, 102, 183, 0.09), transparent 42%),
+          var(--bg);
+      }
+      .ring {
+        position: absolute;
+        right: 7vw;
+        top: 50%;
+        width: min(46vh, 440px);
+        height: min(46vh, 440px);
+        transform: translateY(-50%) rotate(-18deg);
+        border: 1px solid rgba(237, 102, 183, 0.4);
+        border-radius: 50%;
+        background:
+          repeating-radial-gradient(ellipse at center, transparent 0 22px, rgba(237, 102, 183, 0.16) 23px 24px, transparent 25px 40px),
+          repeating-linear-gradient(65deg, transparent 0 34px, rgba(237, 102, 183, 0.12) 35px 36px, transparent 37px 58px);
+        box-shadow: 0 0 80px rgba(237, 102, 183, 0.08), inset 0 0 60px rgba(237, 102, 183, 0.08);
+        pointer-events: none;
+      }
+      .pills { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+      .pill {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 8px 14px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .split { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 28px; align-items: end; }
+      .cards { display: grid; gap: 12px; }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px 20px 16px;
+      }
+      .card b { display: block; font-size: 20px; font-weight: 500; letter-spacing: -0.03em; margin-bottom: 6px; }
+      .card p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.4; }
+      .card em { font-style: normal; color: var(--accent); font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: 0.12em; }
+
+      .desks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 28px; }
+      .desk { min-height: 210px; display: flex; flex-direction: column; }
+      .desk .who { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: 0.16em; color: var(--accent); }
+      .desk strong { display: block; margin: 12px 0 8px; font-size: 28px; font-weight: 500; letter-spacing: -0.04em; }
+      .desk span { color: var(--muted); line-height: 1.4; }
+      .desk code {
+        margin-top: auto;
+        padding-top: 16px;
+        color: var(--faint);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 13px;
+      }
+
+      .states { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 22px; align-items: stretch; margin-top: 8px; }
+      .rail { display: grid; gap: 0; }
+      .step {
+        display: grid;
+        grid-template-columns: 28px 1fr;
+        gap: 14px;
+        align-items: start;
+      }
+      .step i {
+        width: 11px;
+        height: 11px;
+        margin-top: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 18px 0 0 #29242e;
+        justify-self: center;
+      }
+      .step:last-child i { box-shadow: none; }
+      .step b { font-weight: 500; font-size: 18px; }
+      .step p { margin: 2px 0 12px; color: var(--muted); font-size: 15px; }
+
+      .callout {
+        border: 1px solid rgba(237, 102, 183, 0.45);
+        background: #ed66b710;
+        border-radius: 18px;
+        padding: 22px;
+        align-self: center;
+      }
+      .callout b { display: block; font-size: 22px; font-weight: 500; letter-spacing: -0.03em; margin: 8px 0; }
+      .callout p { margin: 0; color: var(--muted); line-height: 1.45; }
+
+      .case {
+        display: grid;
+        grid-template-columns: 0.8fr 1fr 1fr;
+        gap: 14px;
+        margin-top: 26px;
+      }
+      .case h3 {
+        margin: 0 0 12px;
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-family: "IBM Plex Mono", monospace;
+        color: var(--faint);
+      }
+      .suit h3 { color: var(--accent); }
+      .suit { border-color: rgba(237, 102, 183, 0.55); }
+      .row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 16px; }
+      .row span:last-child { color: var(--muted); text-align: right; }
+      .result { margin-top: 14px; font-size: 18px; letter-spacing: -0.03em; }
+      .tag {
+        display: inline-block;
+        margin-left: 8px;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--warn);
+        border: 1px solid #f3d7a155;
+        border-radius: 999px;
+        padding: 3px 8px;
+        vertical-align: 2px;
+      }
+      .tag.exact { color: var(--good); border-color: #d7f5c855; }
+
+      .policies { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 8px; }
+      .policies span {
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        padding: 10px 14px;
+        font-size: 16px;
+      }
+      .facts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 18px; }
+      .facts .card b { font-size: 17px; }
+
+      .beats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 24px; }
+      .beat { min-height: 230px; }
+      .num {
+        font-family: "IBM Plex Mono", monospace;
+        color: var(--accent);
+        letter-spacing: 0.14em;
+        font-size: 12px;
+      }
+      .beat strong { display: block; margin: 10px 0 8px; font-size: 26px; font-weight: 500; letter-spacing: -0.04em; }
+      .beat p { margin: 0; color: var(--muted); line-height: 1.4; }
+      .beat code { display: block; margin-top: 14px; color: var(--faint); font-family: "IBM Plex Mono", monospace; font-size: 13px; }
+
+      .arch { display: grid; grid-template-columns: 1.4fr 0.8fr; gap: 18px; margin-top: 22px; align-items: stretch; }
+      .flow { display: grid; gap: 10px; }
+      .lanes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .node {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 14px 16px;
+        background: var(--panel);
+      }
+      .node b { display: block; font-weight: 500; }
+      .node span { color: var(--muted); font-size: 14px; }
+      .down {
+        text-align: center;
+        color: var(--faint);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 12px;
+        letter-spacing: 0.14em;
+      }
+      .side { border-style: dashed; }
+
+      .bounds { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 24px; }
+      .bounds li { margin: 0 0 10px; color: var(--muted); line-height: 1.4; }
+      .bounds ul { margin: 12px 0 0; padding-left: 18px; }
+      .bounds h3 { margin: 0; font-size: 22px; font-weight: 500; letter-spacing: -0.03em; }
+
+      .close { text-align: left; }
+      .close h1 { max-width: 12ch; }
+      .close .lede { max-width: 28ch; }
+
+      .notes {
+        position: fixed;
+        left: 28px;
+        right: 28px;
+        bottom: 64px;
+        z-index: 7;
+        max-height: 30vh;
+        overflow: auto;
+        padding: 16px 18px;
+        border-radius: 16px;
+        border: 1px solid rgba(237, 102, 183, 0.4);
+        background: rgba(9, 9, 12, 0.94);
+        color: var(--ink);
+        transform: translateY(16px);
+        opacity: 0;
+        pointer-events: none;
+      }
+      body.notes-on .notes { opacity: 1; transform: none; pointer-events: auto; }
+      .notes small {
+        display: block;
+        margin-bottom: 6px;
+        font-family: "IBM Plex Mono", monospace;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        font-size: 11px;
+      }
+      .notes p { margin: 0; font-size: 16px; line-height: 1.45; }
+
+      @media (max-width: 980px) {
+        .slide { padding: 84px 24px 84px; }
+        .split, .states, .case, .facts, .beats, .arch, .bounds, .desks, .lanes { grid-template-columns: 1fr; }
+        .ring { display: none; }
+        h1 { font-size: 48px; }
+        h2 { font-size: 34px; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .slide { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#deck">Skip to slides</a>
+    <div class="progress" id="progress"></div>
+    <header class="chrome">
+      <div class="brand">RelayAid · Shelter desk</div>
+      <div class="count"><b id="current">01</b> / <span id="total">10</span></div>
+    </header>
+
+    <main class="deck" id="deck">
+      <section class="slide title is-on" aria-label="Title">
+        <div class="ring" aria-hidden="true"></div>
+        <p class="kicker">Human connection, coordinated</p>
+        <h1>RelayAid</h1>
+        <p class="lede">Different needs. One community. A shelter desk for water and charging. The receipt only moves when the server confirms it.</p>
+        <div class="pills">
+          <span class="pill">North Hall</span>
+          <span class="pill">South Hall</span>
+          <span class="pill">Resident · Coordinator · Volunteer</span>
+        </div>
+        <p class="script">We’re RelayAid. This is a shelter desk for water and charging. A resident can save a request on a phone. That receipt does not move until the shelter system confirms it. We’ll show the three desks, the rule that keeps unseen requests from taking stock, and a matcher that will not spend the only accessible charger on the wrong person.</p>
+      </section>
+
+      <section class="slide" aria-label="Two failures">
+        <div class="split">
+          <div>
+            <p class="kicker">The hall is already short</p>
+            <h2>A request can look sent and still help no one.</h2>
+          </div>
+          <div class="cards">
+            <article class="card">
+              <em>The resident</em>
+              <b>A save is not a delivery.</b>
+              <p>Saved on this device. Not delivered yet. We’ll keep trying when you’re back online.</p>
+            </article>
+            <article class="card">
+              <em>The stock</em>
+              <b>The accessible charger goes to whoever asked first.</b>
+              <p>The next person may be the only one who can use that slot. First-come still spends it.</p>
+            </article>
+          </div>
+        </div>
+        <p class="script">Two failures show up together. The resident can think a save means someone is coming. And the last accessible charger can go to whoever asked first, even when the next person can only use that slot. A save on the device is not a delivery. An unseen request does not take capacity.</p>
+      </section>
+
+      <section class="slide" aria-label="Three desks">
+        <p class="kicker">One record</p>
+        <h2>Three desks. One shelter.</h2>
+        <div class="desks">
+          <article class="card desk">
+            <span class="who">Resident</span>
+            <strong>Ask</strong>
+            <span>Water, or a charging spot. Review the quantity, then send.</span>
+            <code>/r/request</code>
+          </article>
+          <article class="card desk">
+            <span class="who">Coordinator</span>
+            <strong>Decide</strong>
+            <span>See the queue. Compare plans. Approve one. A stale plan reserves nothing.</span>
+            <code>/c/queue · /c/plans</code>
+          </article>
+          <article class="card desk">
+            <span class="who">Volunteer</span>
+            <strong>Carry</strong>
+            <span>The task appears after a person approves the plan.</span>
+            <code>/v/tasks</code>
+          </article>
+        </div>
+        <p class="fine">This browser keeps one role. A second role needs another browser profile. Demo mode says this is not real authentication.</p>
+        <p class="script">One shelter record, three desks. The resident asks. The coordinator compares plans and approves one. The volunteer carries the task that was approved. This browser holds one role, so a live demo uses a second profile for the other desk. Choosing a desk in the demo is not real authentication. The screen says that.</p>
+      </section>
+
+      <section class="slide" aria-label="Receipt words">
+        <p class="kicker">The words on the receipt</p>
+        <h2>The line moves only after the server records it.</h2>
+        <div class="states">
+          <div class="rail">
+            <div class="step"><i></i><div><b>Saved on this device</b><p>Not delivered yet. We’ll keep trying when you’re back online.</p></div></div>
+            <div class="step"><i></i><div><b>Delivered</b><p>Delivered to the shelter system. No one has looked at it yet.</p></div></div>
+            <div class="step"><i></i><div><b>Seen by a person</b><p>A staff member has seen your request.</p></div></div>
+            <div class="step"><i></i><div><b>Assigned</b><p>Someone has been assigned to help.</p></div></div>
+            <div class="step"><i></i><div><b>Completed</b><p>Marked as done. If that’s wrong, tell staff.</p></div></div>
+          </div>
+          <aside class="callout">
+            <span class="kicker">Capacity</span>
+            <b>Unseen requests do not take stock.</b>
+            <p>An unacknowledged request stays unmatched. It does not reserve water or a charger.</p>
+          </aside>
+        </div>
+        <p class="script">Read the receipt the way the resident sees it. Saved on this device means it has not been delivered. Delivered means the shelter system has it, and no one has looked yet. Seen, assigned, and completed appear only after the server records them. If a request is never acknowledged, it stays unmatched and does not take capacity.</p>
+      </section>
+
+      <section class="slide" aria-label="Matcher">
+        <p class="kicker">Worked example · not a live headcount</p>
+        <h2>One accessible charger. Two ways to spend it.</h2>
+        <div class="case">
+          <article class="card">
+            <h3>The case</h3>
+            <div class="row"><span>Request 1</span><span>Either slot</span></div>
+            <div class="row"><span>Request 2</span><span>Accessible only</span></div>
+            <div class="row"><span>Free</span><span>1 accessible, 1 general</span></div>
+          </article>
+          <article class="card">
+            <h3>First-come</h3>
+            <div class="row"><span>Request 1</span><span>Accessible</span></div>
+            <div class="row"><span>Request 2</span><span>Unmatched</span></div>
+            <p class="result">1 matched <span class="tag">Heuristic</span></p>
+          </article>
+          <article class="card suit">
+            <h3>Suitability</h3>
+            <div class="row"><span>Request 2</span><span>Accessible</span></div>
+            <div class="row"><span>Request 1</span><span>General</span></div>
+            <p class="result">2 matched <span class="tag exact">Exact</span></p>
+          </article>
+        </div>
+        <p class="fine">Same requests. Same stock. First-come is always labelled heuristic. Suitability on this pair is exact. Request 2 is unmatched under first-come because capacity for that slot is exhausted.</p>
+        <p class="script">Same two charging requests. Request 1 can take either slot. Request 2 needs the accessible slot. There is one of each. First-come gives the accessible charger to request 1 and leaves request 2 unmatched. That method is labelled heuristic. Suitability gives the accessible slot to request 2 and the general slot to request 1. Both match. On this size, that method is exact. These are worked examples from the matcher, not a headcount from a live hall.</p>
+      </section>
+
+      <section class="slide" aria-label="A person decides">
+        <p class="kicker">Coordinator</p>
+        <h2>A person picks the rule, then approves the plan.</h2>
+        <div class="policies">
+          <span>Most requests</span>
+          <span>Most quantity</span>
+          <span>Longest wait</span>
+          <span>Accessible coverage</span>
+        </div>
+        <div class="facts">
+          <article class="card">
+            <b>What-if stays a copy.</b>
+            <p>Add one accessible charger and both requests match. The original resource list stays the same length.</p>
+          </article>
+          <article class="card">
+            <b>A stale plan reserves nothing.</b>
+            <p>If another change lands first, regenerate. Approval does not invent capacity.</p>
+          </article>
+          <article class="card">
+            <b>Wait is a declared weight.</b>
+            <p>Longest-wait adds 1 weight for every 30 minutes. That is a declared rule, not a claim of fairness.</p>
+          </article>
+        </div>
+        <p class="script">The coordinator chooses the policy: most requests, most quantity, longest wait, or accessible coverage. They can ask what happens if one more accessible charger existed. That what-if does not change the real resource list. Approving a stale plan reserves nothing. Longest-wait adds one weight every thirty minutes. We call that a declared rule. We do not call it fairness.</p>
+      </section>
+
+      <section class="slide" aria-label="Live demo">
+        <p class="kicker">If the shelter system is connected</p>
+        <h2>Three browsers. Then come back for questions.</h2>
+        <div class="beats">
+          <article class="card beat">
+            <span class="num">01 · Resident</span>
+            <strong>Send 2 water.</strong>
+            <p>Review the ask before it leaves. Point at “Saved on this device,” then at the server line.</p>
+            <code>North Hall · /r/request</code>
+          </article>
+          <article class="card beat">
+            <span class="num">02 · Coordinator</span>
+            <strong>Compare, then approve.</strong>
+            <p>Open Plans. Compare first-come and suitability. Approve one plan.</p>
+            <code>/c/queue · /c/plans</code>
+          </article>
+          <article class="card beat">
+            <span class="num">03 · Volunteer</span>
+            <strong>The task is there.</strong>
+            <p>Only the approved assignment shows up to carry.</p>
+            <code>/v/tasks</code>
+          </article>
+        </div>
+        <p class="fine">Until the database address is set, the coordinator stays on “Connecting to the shelter system…” and plans are not generated yet. Stay on the matcher slide.</p>
+        <p class="script">If the shelter system is connected, switch to the desks. Resident, North Hall, asks for 2 water, reviews, and sends. Show Saved on this device, then the server line. Coordinator opens Plans, compares first-come with suitability, and approves one. Volunteer opens Tasks. If we are still connecting, stay on the matcher. The queue says connecting until the database address is set, and plans are not generated yet.</p>
+      </section>
+
+      <section class="slide" aria-label="How it is wired">
+        <p class="kicker">One module</p>
+        <h2>The desks read the same record.</h2>
+        <div class="arch">
+          <div class="flow">
+            <div class="lanes">
+              <div class="node"><b>Resident</b><span>Asks</span></div>
+              <div class="node"><b>Coordinator</b><span>Plans</span></div>
+              <div class="node"><b>Volunteer</b><span>Carries</span></div>
+            </div>
+            <div class="down">Outbox holds a request until it can be sent</div>
+            <div class="node"><b>SpacetimeDB</b><span>One shelter module. Seen, assigned, and completed are reducer results.</span></div>
+            <div class="down">Solver writes a plan from requests and resources</div>
+            <div class="node"><b>Plan</b><span>First-come or suitability. A person approves it.</span></div>
+          </div>
+          <aside class="card side">
+            <em>Separate path</em>
+            <b>Investigate</b>
+            <p>Calls NVIDIA from the dev server. That key is not in the browser. If the model is off, the result is labelled fallback.</p>
+            <p style="margin-top: 14px">The response desk is a local demonstration with synthetic responders. The 911 control places a phone call. RelayAid does not dispatch emergency services.</p>
+          </aside>
+        </div>
+        <p class="script">The desks read one SpacetimeDB module. The outbox holds a request until it can be sent. The solver writes a plan from requests and resources. A person approves it. Investigate calls NVIDIA from the dev server. The key stays off the browser. If the model is down, the screen says fallback, and that label is the result. The response desk is a separate local demonstration with synthetic responders. The 911 control places a phone call. We do not dispatch emergency services.</p>
+      </section>
+
+      <section class="slide" aria-label="What holds in questions">
+        <p class="kicker">If they ask</p>
+        <h2>Say what the screen can show.</h2>
+        <div class="bounds">
+          <article class="card">
+            <h3>On the table</h3>
+            <ul>
+              <li>Receipt words match the resident screen.</li>
+              <li>First-come is labelled heuristic. Suitability on the two-charger pair is exact.</li>
+              <li>Shortage estimates stay unknown below 5 observations.</li>
+              <li>Five observations valued 1, 2, 2, 3, and 4 estimate a range of 1 to 4. That range is not an arrival time.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>The bound</h3>
+            <ul>
+              <li>Demo mode is not real authentication.</li>
+              <li>A fallback label means the model did not produce that result.</li>
+              <li>The waiting weight is a declared rule, not a fairness proof.</li>
+              <li>Matcher charts are worked examples, not counts from a live shelter.</li>
+              <li>We do not call emergency services.</li>
+            </ul>
+          </article>
+        </div>
+        <p class="script">If you ask what is on the table: the receipt words, labelled methods, and the shortage rule. Under five observations the shortage estimate stays unknown. Five observations valued 1, 2, 2, 3, and 4 estimate a range of 1 to 4. That range is not an arrival time. The bounds: demo mode is not real authentication, a fallback is not a model answer, a waiting weight is not a fairness proof, the charts are worked examples, and we do not call emergency services.</p>
+      </section>
+
+      <section class="slide close" aria-label="Close">
+        <p class="kicker">RelayAid</p>
+        <h1>Fast aid. Protected stock.</h1>
+        <p class="lede">No one overlooked. Questions on the receipt, the matcher, or the desks.</p>
+        <p class="script">Fast aid. Protected stock. No one overlooked. We’ll take questions on the receipt, the matcher, or the live desks.</p>
+      </section>
+    </main>
+
+    <aside class="notes" id="notes" aria-live="polite">
+      <small>Speaker notes · S to hide</small>
+      <p id="notes-body"></p>
+    </aside>
+
+    <footer class="footer">
+      <div class="hint">Arrows move · S notes · F full screen</div>
+      <div class="keys">
+        <button type="button" id="prev">Back</button>
+        <button type="button" id="notes-btn" aria-pressed="false">Notes</button>
+        <button type="button" id="next">Next</button>
+      </div>
+    </footer>
+
+    <script>
+      const slides = [...document.querySelectorAll(".slide")];
+      const notesBody = document.getElementById("notes-body");
+      const notesBtn = document.getElementById("notes-btn");
+      const current = document.getElementById("current");
+      const total = document.getElementById("total");
+      const progress = document.getElementById("progress");
+      let index = 0;
+
+      total.textContent = String(slides.length).padStart(2, "0");
+
+      function show(next) {
+        index = Math.max(0, Math.min(slides.length - 1, next));
+        slides.forEach((slide, i) => {
+          const on = i === index;
+          slide.classList.toggle("is-on", on);
+          slide.hidden = !on;
+        });
+        current.textContent = String(index + 1).padStart(2, "0");
+        progress.style.width = ((index + 1) / slides.length) * 100 + "%";
+        notesBody.textContent = slides[index].querySelector(".script")?.textContent.trim() || "";
+        history.replaceState(null, "", "#" + (index + 1));
+      }
+
+      function step(delta) {
+        show(index + delta);
+      }
+
+      document.getElementById("next").addEventListener("click", () => step(1));
+      document.getElementById("prev").addEventListener("click", () => step(-1));
+      notesBtn.addEventListener("click", toggleNotes);
+
+      function toggleNotes() {
+        const on = document.body.classList.toggle("notes-on");
+        notesBtn.setAttribute("aria-pressed", String(on));
+      }
+
+      document.addEventListener("keydown", (event) => {
+        const tag = document.activeElement?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
+          event.preventDefault();
+          step(1);
+        } else if (event.key === "ArrowLeft" || event.key === "PageUp" || event.key === "Backspace") {
+          event.preventDefault();
+          step(-1);
+        } else if (event.key === "Home") {
+          show(0);
+        } else if (event.key === "End") {
+          show(slides.length - 1);
+        } else if (event.key === "s" || event.key === "S") {
+          toggleNotes();
+        } else if (event.key === "f" || event.key === "F") {
+          if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+          else document.exitFullscreen?.();
+        }
+      });
+
+      let touchX = null;
+      document.addEventListener("touchstart", (event) => {
+        touchX = event.changedTouches[0].clientX;
+      }, { passive: true });
+      document.addEventListener("touchend", (event) => {
+        if (touchX == null) return;
+        const delta = event.changedTouches[0].clientX - touchX;
+        if (delta < -48) step(1);
+        if (delta > 48) step(-1);
+        touchX = null;
+      }, { passive: true });
+
+      function fromHash() {
+        const n = Number(location.hash.slice(1));
+        return Number.isFinite(n) && n > 0 ? n - 1 : 0;
+      }
+
+      window.addEventListener("hashchange", () => show(fromHash()));
+      show(fromHash());
+    </script>
+  </body>
+</html>

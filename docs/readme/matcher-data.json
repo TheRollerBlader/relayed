@@ -1,0 +1,37 @@
+[
+  {
+    "label": "First-come",
+    "scenario": "Mixed charging needs",
+    "matched": 1,
+    "unmatched": 1,
+    "method": "heuristic"
+  },
+  {
+    "label": "Suitability",
+    "scenario": "Mixed charging needs",
+    "matched": 2,
+    "unmatched": 0,
+    "method": "exact"
+  },
+  {
+    "label": "Current capacity",
+    "scenario": "Two accessible requests",
+    "matched": 1,
+    "unmatched": 1,
+    "method": "exact"
+  },
+  {
+    "label": "+1 accessible charger",
+    "scenario": "Two accessible requests",
+    "matched": 2,
+    "unmatched": 0,
+    "method": "exact"
+  },
+  {
+    "label": "Water stock: 2 units",
+    "scenario": "Three one-unit requests",
+    "matched": 2,
+    "unmatched": 1,
+    "method": "heuristic"
+  }
+]

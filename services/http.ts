@@ -1,0 +1,7 @@
+import type {IncomingMessage,ServerResponse} from 'node:http';
+import {createHmac,timingSafeEqual} from 'node:crypto';
+export async function rawBody(req:IncomingMessage,max=32000){const chunks:Buffer[]=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>max)throw new Error('PAYLOAD_TOO_LARGE');chunks.push(Buffer.from(chunk))}return Buffer.concat(chunks).toString('utf8')}
+export function json(res:ServerResponse,status:number,value:unknown){res.writeHead(status,{'content-type':'application/json','cache-control':'no-store','x-content-type-options':'nosniff'});res.end(JSON.stringify(value))}
+export function sign(body:string,timestamp:string,secret:string){return createHmac('sha256',secret).update(timestamp+'.'+body).digest('hex')}
+export function verify(body:string,timestamp:string,signature:string,secret:string,now=Date.now()){if(!/^\d+$/.test(timestamp)||Math.abs(now-Number(timestamp))>300000||!/^[a-f0-9]{64}$/.test(signature))return false;return timingSafeEqual(Buffer.from(sign(body,timestamp,secret),'hex'),Buffer.from(signature,'hex'))}
+export function safeError(error:unknown){const message=error instanceof Error?error.message:'';const code=message.match(/\b(?:UNAUTHORIZED|INVALID_INPUT|INVALID_COMMAND|IDEMPOTENCY_CONFLICT|STALE_VERSION|CONSENT_REQUIRED|CALL_ACTIVE|LEASE_LOST|ACTIVE_CASES|NOT_FOUND|GUEST_EXPIRED|DATABASE_UNAVAILABLE|PAYLOAD_TOO_LARGE|UNKNOWN_COMMAND)\b/)?.[0];return code||'REQUEST_FAILED'}
