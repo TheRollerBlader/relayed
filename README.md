@@ -53,7 +53,7 @@ cd ..
 
 Set `VITE_SPACETIME_URI` to your server endpoint in a local `.env` file, then restart Vite. `VITE_SPACETIME_DB_NAME` defaults to `relayaid-demo`.
 
-For Investigate, copy the settings in [`.env.example`](.env.example) and configure `NEMOTRON_BASE_URL`, `NEMOTRON_API_KEY`, and `NEMOTRON_MODEL`. Keep the API key server-side; never prefix it with `VITE_` or commit it.
+For Investigate, set `NEMOTRON_BASE_URL`, `NEMOTRON_API_KEY`, and `NEMOTRON_MODEL` in a local `.env` file. That file is gitignored. Keep the API key server-side; never prefix it with `VITE_`.
 
 </details>
 
